@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">شاحنتي</string>
+    <string name="no_connection">لا يوجد اتصال بالإنترنت. تحقق من الشبكة ثم أعد المحاولة.</string>
+    <string name="retry">إعادة المحاولة</string>
+</resources>

@@ -21,3 +21,10 @@ expo-env.d.ts
 
 # env
 .env
+
+# android
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties
+*.jks
