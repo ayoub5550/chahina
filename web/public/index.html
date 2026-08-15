@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>شاحنتي — Truckly | أقرب شاحنة لنقل بضاعتك</title>
+<meta name="theme-color" content="#0f172a" />
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div id="app">
+  <!-- ===== Auth screen ===== -->
+  <section id="screen-auth" class="screen active">
+    <div class="auth-wrap">
+      <div class="lang-switch" id="lang-switch-auth">
+        <button data-lang="ar">العربية</button><button data-lang="fr">Français</button><button data-lang="en">English</button>
+      </div>
+      <div class="brand">
+        <div class="logo">🚚</div>
+        <h1 data-i18n="app_name">شاحنتي</h1>
+        <p class="tag" data-i18n="tagline"></p>
+        <div class="usp">
+          <span data-i18n="usp_compare"></span><span data-i18n="usp_chat"></span><span data-i18n="usp_free"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="tabs">
+          <button class="tab active" data-auth="login" data-i18n="login"></button>
+          <button class="tab" data-auth="register" data-i18n="register"></button>
+        </div>
+
+        <form id="form-login" class="form">
+          <label><span data-i18n="phone"></span><input name="phone" inputmode="tel" placeholder="0555000000" required></label>
+          <label><span data-i18n="password"></span><input name="password" type="password" required></label>
+          <button class="btn primary" type="submit" data-i18n="login"></button>
+        </form>
+
+        <form id="form-register" class="form hidden">
+          <div class="role-picker">
+            <label class="role"><input type="radio" name="role" value="shipper" checked><span><b data-i18n="role_shipper_t"></b><small data-i18n="role_shipper_s"></small></span></label>
+            <label class="role"><input type="radio" name="role" value="carrier"><span><b data-i18n="role_carrier_t"></b><small data-i18n="role_carrier_s"></small></span></label>
+          </div>
+          <label><span data-i18n="full_name"></span><input name="name" required></label>
+          <label><span data-i18n="phone"></span><input name="phone" inputmode="tel" required></label>
+          <label><span data-i18n="city"></span><input name="city" data-i18n-ph="city_ph"></label>
+          <label><span data-i18n="password"></span><input name="password" type="password" minlength="6" required></label>
+          <button class="btn primary" type="submit" data-i18n="create_account"></button>
+        </form>
+        <p id="auth-error" class="error"></p>
+      </div>
+      <p class="fineprint" data-i18n="fineprint"></p>
+    </div>
+  </section>
+
+  <!-- ===== Main app ===== -->
+  <section id="screen-app" class="screen">
+    <header class="topbar">
+      <div class="who"><span class="logo-sm">🚚</span><div><b id="me-name">—</b><small id="me-role"></small></div></div>
+      <div class="top-actions">
+        <span id="me-rating" class="chip"></span>
+        <button id="btn-bell" class="btn ghost small">🔔<span id="bell-count" class="bell-count hidden">0</span></button>
+        <select id="lang-select" class="lang-select">
+          <option value="ar">ع</option><option value="fr">FR</option><option value="en">EN</option>
+        </select>
+        <button id="btn-theme" class="btn ghost small" title="theme">🌙</button>
+        <button id="btn-logout" class="btn ghost small" data-i18n="logout"></button>
+      </div>
+    </header>
+
+    <main>
+      <!-- map view -->
+      <div id="view-map" class="view active">
+        <div id="map"></div>
+        <div class="map-panel">
+          <div id="map-panel-shipper">
+            <div class="panel-head"><b data-i18n="nearest_trucks"></b><button id="btn-locate" class="btn ghost small" data-i18n="my_location"></button></div>
+            <div class="filters">
+              <select id="filter-type"></select>
+              <input id="filter-tons" type="number" min="0" step="0.5" data-i18n-ph="min_tons">
+            </div>
+            <div class="filters">
+              <select id="filter-sort">
+                <option value="price" data-i18n="sort_price"></option>
+                <option value="distance" data-i18n="sort_distance"></option>
+                <option value="rating" data-i18n="sort_rating"></option>
+              </select>
+              <input id="filter-tripkm" type="number" min="0" step="1" data-i18n-ph="trip_km">
+            </div>
+            <label class="switch" id="fav-filter-wrap"><input type="checkbox" id="filter-fav"><span data-i18n="only_favorites"></span></label>
+            <p class="hint" data-i18n="compare_hint"></p>
+            <div id="trucks-list" class="list"></div>
+            <button id="btn-new-shipment" class="btn primary block" data-i18n="order_now"></button>
+          </div>
+          <div id="map-panel-carrier" class="hidden">
+            <div class="panel-head"><b data-i18n="my_truck_state"></b>
+              <label class="switch"><input type="checkbox" id="toggle-available"><span data-i18n="available"></span></label>
+            </div>
+            <div id="truck-summary" class="truck-summary"></div>
+            <button id="btn-truck-edit" class="btn ghost block" data-i18n="edit_truck"></button>
+            <button id="btn-share-loc" class="btn primary block" data-i18n="share_loc"></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- shipments view -->
+      <div id="view-shipments" class="view">
+        <div class="view-head"><h2 id="shipments-title"></h2></div>
+        <div id="shipments-list" class="list padded"></div>
+      </div>
+
+      <!-- chat view -->
+      <div id="view-chats" class="view">
+        <div class="view-head"><h2 data-i18n="chats"></h2></div>
+        <div id="chats-list" class="list padded"></div>
+      </div>
+
+      <!-- dashboard view -->
+      <div id="view-dash" class="view">
+        <div class="view-head"><h2 data-i18n="dashboard"></h2><button id="btn-dash-refresh" class="btn ghost small">↻</button></div>
+        <div id="dash-body" class="padded"></div>
+      </div>
+
+      <!-- profile view -->
+      <div id="view-profile" class="view">
+        <div class="view-head"><h2 data-i18n="account"></h2></div>
+        <div id="profile-body" class="padded"></div>
+      </div>
+    </main>
+
+    <nav class="bottom-nav">
+      <button class="nav active" data-view="map"><span>🗺️</span><i data-i18n="map"></i></button>
+      <button class="nav" data-view="shipments"><span>📦</span><i id="nav-ship-label"></i></button>
+      <button class="nav" data-view="dash"><span>📊</span><i data-i18n="dashboard"></i></button>
+      <button class="nav" data-view="chats"><span>💬</span><i data-i18n="chats"></i><em id="chat-count" class="nav-count hidden">0</em></button>
+      <button class="nav" data-view="profile"><span>👤</span><i data-i18n="account"></i></button>
+    </nav>
+  </section>
+
+  <!-- ===== Modal ===== -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head"><b id="modal-title"></b><button id="modal-close" class="btn ghost small">✕</button></div>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+  <div id="toast" class="toast hidden"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/i18n.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>
