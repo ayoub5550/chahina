@@ -1,5 +1,5 @@
 /**
- * Truckly API — "أوبر الشاحنات" / "Uber pour camions"
+ * شاحنتي / Chahina API — سوق نقل البضائع
  * Self-hosted: Express + SQLite + JWT. Payments via Chargily Pay (Algeria).
  * Trilingual API messages: ar / fr / en.
  */
