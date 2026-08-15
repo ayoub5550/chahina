@@ -15,7 +15,7 @@ JWT=$( [ -f "$APP_DIR/web/.env" ] && grep -oP '(?<=JWT_SECRET=).*' "$APP_DIR/web
 CHARGILY=$( [ -f "$APP_DIR/web/.env" ] && grep -oP '(?<=CHARGILY_SECRET_KEY=).*' "$APP_DIR/web/.env" || echo "${CHARGILY_SECRET_KEY:-}" )
 {
   printf 'JWT_SECRET=%s\nPORT=%s\n' "$JWT" "$PORT"
-  printf 'PUBLIC_URL=%s\n' "${PUBLIC_URL_APP:-http://185.114.48.164:$PUBLIC_PORT}"
+  printf 'PUBLIC_URL=%s\n' "${PUBLIC_URL_APP:-http://YOUR_SERVER_IP:$PUBLIC_PORT}"
   printf 'CHARGILY_MODE=%s\n' "${CHARGILY_MODE:-test}"
   [ -n "$CHARGILY" ] && printf 'CHARGILY_SECRET_KEY=%s\n' "$CHARGILY"
 } > "$APP_DIR/web/.env"
