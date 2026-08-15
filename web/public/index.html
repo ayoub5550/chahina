@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>شاحنتي — Truckly | أقرب شاحنة لنقل بضاعتك</title>
+<title>شاحنتي | قارن أسعار الشاحنات واختر الأرخص</title>
 <meta name="theme-color" content="#0f172a" />
 <link rel="manifest" href="/manifest.webmanifest" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="/vendor/leaflet/leaflet.css" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css" />
@@ -91,6 +91,17 @@
               </select>
               <input id="filter-tripkm" type="number" min="0" step="1" data-i18n-ph="trip_km">
             </div>
+            <div class="filters">
+              <input id="filter-q" type="search" data-i18n-ph="search_ph">
+              <button id="btn-filters-toggle" class="btn ghost small" data-i18n="more_filters"></button>
+            </div>
+            <div id="filters-advanced" class="filters-adv hidden">
+              <label class="mini"><span data-i18n="max_per_km"></span><input id="filter-maxkm" type="number" min="0" step="10"></label>
+              <label class="mini"><span data-i18n="min_rating"></span>
+                <select id="filter-rating"><option value="">—</option><option value="3">3★+</option><option value="4">4★+</option><option value="4.5">4.5★+</option></select>
+              </label>
+              <label class="switch"><input type="checkbox" id="filter-verified"><span data-i18n="verified_only"></span></label>
+            </div>
             <label class="switch" id="fav-filter-wrap"><input type="checkbox" id="filter-fav"><span data-i18n="only_favorites"></span></label>
             <p class="hint" data-i18n="compare_hint"></p>
             <div id="trucks-list" class="list"></div>
@@ -100,6 +111,7 @@
             <div class="panel-head"><b data-i18n="my_truck_state"></b>
               <label class="switch"><input type="checkbox" id="toggle-available"><span data-i18n="available"></span></label>
             </div>
+            <div id="carrier-requests" class="requests"></div>
             <div id="truck-summary" class="truck-summary"></div>
             <button id="btn-truck-edit" class="btn ghost block" data-i18n="edit_truck"></button>
             <button id="btn-share-loc" class="btn primary block" data-i18n="share_loc"></button>
@@ -151,8 +163,9 @@
   <div id="toast" class="toast hidden"></div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/vendor/leaflet/leaflet.js"></script>
 <script src="/i18n.js"></script>
 <script src="/app.js"></script>
+<script src="/v2.js"></script>
 </body>
 </html>

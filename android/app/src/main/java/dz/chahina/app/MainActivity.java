@@ -24,6 +24,11 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import android.widget.Toast;
+import android.app.DownloadManager;
+import android.os.Environment;
+import android.content.Context;
 
 /** شاحنتي — غلاف أندرويد لتطبيق الويب (WebView) مع دعم الموقع ورفع الصور. */
 public class MainActivity extends AppCompatActivity {
@@ -32,6 +37,8 @@ public class MainActivity extends AppCompatActivity {
     public static final String APP_URL = "http://185.114.48.164:8090/";
 
     private WebView web;
+    private SwipeRefreshLayout swipe;
+    private long lastBackPress = 0;
     private LinearLayout offline;
     private ValueCallback<Uri[]> filePathCallback;
     private static final int REQ_FILE = 101;
@@ -80,6 +87,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onPageFinished(WebView view, String url) {
+                if (swipe != null) swipe.setRefreshing(false);
                 if (!loadFailed) {
                     offline.setVisibility(View.GONE);
                     web.setVisibility(View.VISIBLE);
@@ -89,6 +97,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onReceivedError(WebView view, WebResourceRequest req, android.webkit.WebResourceError err) {
                 if (req.isForMainFrame()) {
+                    if (swipe != null) swipe.setRefreshing(false);
                     loadFailed = true;
                     web.setVisibility(View.GONE);
                     offline.setVisibility(View.VISIBLE);
@@ -133,6 +142,22 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // تنزيل الملفات (الفواتير والصور)
+        web.setDownloadListener((url, userAgent, contentDisposition, mimeType, size) -> {
+            try {
+                DownloadManager.Request r = new DownloadManager.Request(Uri.parse(url));
+                r.setMimeType(mimeType);
+                r.allowScanningByMediaScanner();
+                r.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                r.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS,
+                        android.webkit.URLUtil.guessFileName(url, contentDisposition, mimeType));
+                ((DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE)).enqueue(r);
+                Toast.makeText(this, R.string.downloading, Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+            }
+        });
+
         // شاشة "لا يوجد اتصال"
         offline = new LinearLayout(this);
         offline.setOrientation(LinearLayout.VERTICAL);
@@ -156,8 +181,15 @@ public class MainActivity extends AppCompatActivity {
         offline.addView(msg);
         offline.addView(retry);
 
+        swipe = new SwipeRefreshLayout(this);
+        swipe.addView(web);
+        swipe.setColorSchemeColors(0xFFF5A524);
+        swipe.setOnRefreshListener(() -> { loadFailed = false; web.reload(); });
+        // لا يتعارض السحب للتحديث مع تمرير الخريطة: يعمل فقط عند أعلى الصفحة
+        swipe.setOnChildScrollUpCallback((parent, child) -> web.getScrollY() > 0);
+
         android.widget.FrameLayout root = new android.widget.FrameLayout(this);
-        root.addView(web);
+        root.addView(swipe);
         root.addView(offline);
         setContentView(root);
 
@@ -166,6 +198,11 @@ public class MainActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this,
                     new String[]{Manifest.permission.ACCESS_FINE_LOCATION,
                             Manifest.permission.ACCESS_COARSE_LOCATION}, REQ_PERMS);
+        }
+
+        if (Build.VERSION.SDK_INT >= 33 &&
+                ContextCompat.checkSelfPermission(this, "android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{"android.permission.POST_NOTIFICATIONS"}, REQ_PERMS);
         }
 
         if (savedInstanceState != null) web.restoreState(savedInstanceState);
@@ -198,7 +235,15 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if (web.canGoBack()) web.goBack();
-        else super.onBackPressed();
+        if (web.canGoBack()) {
+            web.goBack();
+            return;
+        }
+        if (System.currentTimeMillis() - lastBackPress < 2000) {
+            super.onBackPressed();
+        } else {
+            lastBackPress = System.currentTimeMillis();
+            Toast.makeText(this, R.string.press_again_exit, Toast.LENGTH_SHORT).show();
+        }
     }
 }

@@ -19,7 +19,7 @@ const UPLOAD_DIR = path.join(DATA_DIR, "uploads");
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 const PORT = process.env.PORT || 4000;
-const JWT_SECRET = process.env.JWT_SECRET || "truckly-dev-secret-change-me";
+const JWT_SECRET = process.env.JWT_SECRET || "chahina-dev-secret-change-me";
 const PUBLIC_URL = (process.env.PUBLIC_URL || `http://localhost:${PORT}`).replace(/\/$/, "");
 
 const app = express();
@@ -65,7 +65,7 @@ function auth(required = true) {
     }
     try {
       const payload = jwt.verify(token, JWT_SECRET);
-      req.user = db.prepare("SELECT id, name, phone, role, city, lang, bio, photo_url FROM users WHERE id = ?").get(payload.id);
+      req.user = db.prepare("SELECT id, name, phone, role, city, lang, bio, photo_url, verified FROM users WHERE id = ?").get(payload.id);
       if (!req.user) return res.status(401).json({ error: t("account_missing", req.lang) });
       db.prepare("UPDATE users SET last_seen=datetime('now') WHERE id=?").run(req.user.id);
       next();
@@ -179,12 +179,28 @@ app.post("/api/auth/register", (req, res) => {
   ok(res, { token: sign(user), user });
 });
 
+const loginAttempts = new Map(); // phone -> { n, until }
+function throttled(key) {
+  const a = loginAttempts.get(key);
+  return a && a.until > Date.now();
+}
+function noteFail(key) {
+  const a = loginAttempts.get(key) || { n: 0, until: 0 };
+  a.n += 1;
+  if (a.n >= 5) { a.until = Date.now() + 5 * 60 * 1000; a.n = 0; }
+  loginAttempts.set(key, a);
+}
+
 app.post("/api/auth/login", (req, res) => {
   const { phone, password } = req.body || {};
   const cleanPhone = String(phone || "").replace(/\s+/g, "");
+  if (throttled(cleanPhone)) return bad(res, req, "too_many_tries", 429);
   const row = db.prepare("SELECT * FROM users WHERE phone = ?").get(cleanPhone);
-  if (!row || !bcrypt.compareSync(String(password || ""), row.password_hash))
+  if (!row || !bcrypt.compareSync(String(password || ""), row.password_hash)) {
+    noteFail(cleanPhone);
     return bad(res, req, "bad_credentials", 401);
+  }
+  loginAttempts.delete(cleanPhone);
   const user = { id: row.id, name: row.name, phone: row.phone, role: row.role, city: row.city, lang: row.lang };
   ok(res, { token: sign(user), user });
 });
@@ -203,7 +219,7 @@ app.put("/api/me", auth(), (req, res) => {
   db.prepare(
     "UPDATE users SET name=COALESCE(?,name), city=COALESCE(?,city), lang=COALESCE(?,lang), bio=COALESCE(?,bio), photo_url=COALESCE(?,photo_url) WHERE id=?"
   ).run(name || null, city || null, LANGS.includes(lang) ? lang : null, bio ?? null, photo, req.user.id);
-  ok(res, { user: db.prepare("SELECT id,name,phone,role,city,lang,bio,photo_url FROM users WHERE id=?").get(req.user.id) });
+  ok(res, { user: db.prepare("SELECT id,name,phone,role,city,lang,bio,photo_url,verified FROM users WHERE id=?").get(req.user.id) });
 });
 
 // ---------- notifications ----------
@@ -276,7 +292,7 @@ app.get("/api/trucks/nearby", auth(false), (req, res) => {
   const minCap = num(req.query.min_tons);
   let rows = db
     .prepare(
-      `SELECT t.*, u.name, u.city, u.photo_url AS user_photo, u.last_seen FROM trucks t JOIN users u ON u.id=t.user_id
+      `SELECT t.*, u.name, u.city, u.photo_url AS user_photo, u.last_seen, u.verified FROM trucks t JOIN users u ON u.id=t.user_id
        WHERE t.available=1 AND t.lat IS NOT NULL AND t.lng IS NOT NULL`
     )
     .all();
@@ -294,7 +310,10 @@ app.get("/api/trucks/nearby", auth(false), (req, res) => {
     capacity_tons: r.capacity_tons,
     plate: r.plate,
     photo_url: r.photo_url,
+    photos: r.photos ? JSON.parse(r.photos) : [],
     user_photo: r.user_photo,
+    verified: !!r.verified,
+    city: r.city,
     online: r.last_seen ? Date.now() - Date.parse(r.last_seen + "Z") < 10 * 60 * 1000 : false,
     description: r.description,
     tariff: tariffOf(r),
@@ -312,6 +331,15 @@ app.get("/api/trucks/nearby", auth(false), (req, res) => {
   const tripKm = num(req.query.trip_km);
   if (tripKm) out = out.map((r) => ({ ...r, trip_estimate: estimateFor(rows.find((x) => x.user_id === r.user_id), tripKm) }));
   if (lat !== null && lng !== null) out = out.filter((r) => r.distance_km <= radius);
+  const maxPerKm = num(req.query.max_per_km);
+  if (maxPerKm) out = out.filter((r) => r.tariff && r.tariff.per_km <= maxPerKm);
+  const minRating = num(req.query.min_rating);
+  if (minRating) out = out.filter((r) => (r.rating || 0) >= minRating);
+  if (req.query.verified === "1") out = out.filter((r) => r.verified);
+  if (req.query.q) {
+    const q = String(req.query.q).toLowerCase();
+    out = out.filter((r) => [r.name, r.city, r.description, r.plate].some((v) => String(v || "").toLowerCase().includes(q)));
+  }
   const sort = req.query.sort || (lat !== null ? "distance" : "price");
   const byPrice = (a, b) => {
     const pa = a.trip_estimate ?? (a.tariff ? a.tariff.per_km : Infinity);
@@ -548,7 +576,7 @@ app.post("/api/shipments/:id/pay", auth(), requireRole("shipper"), async (req, r
     const checkout = await chargily.createCheckout({
       amount: s.agreed_price,
       locale: req.user.lang || req.lang,
-      description: `Truckly #${s.id} — ${s.pickup_label} → ${s.dropoff_label}`,
+      description: `Chahina #${s.id} — ${s.pickup_label} → ${s.dropoff_label}`,
       successUrl: `${PUBLIC_URL}/?pay=success&shipment=${s.id}`,
       failureUrl: `${PUBLIC_URL}/?pay=failed&shipment=${s.id}`,
       webhookUrl: `${PUBLIC_URL}/api/webhooks/chargily`,
@@ -593,9 +621,160 @@ function handleChargilyEvent(event) {
   console.log(`[chargily] ${type} checkout=${checkoutId} shipment=${shipmentId}`);
 }
 
+
+// ---------- instant booking (v2): pick a truck, price computed from its tariff ----------
+app.post("/api/book", auth(), requireRole("shipper"), (req, res) => {
+  const b = req.body || {};
+  const carrierId = num(b.carrier_id);
+  const truck = carrierId ? db.prepare("SELECT * FROM trucks WHERE user_id=?").get(carrierId) : null;
+  if (!truck) return bad(res, req, "not_found", 404);
+  if (!truck.available) return bad(res, req, "truck_busy");
+  const required = ["pickup_label", "pickup_lat", "pickup_lng", "dropoff_label", "dropoff_lat", "dropoff_lng", "cargo", "weight_tons"];
+  for (const k of required)
+    if (b[k] === undefined || b[k] === null || b[k] === "") return bad(res, req, "field_required", 400, k);
+  if (truck.capacity_tons < num(b.weight_tons)) return bad(res, req, "over_capacity");
+  const km = Math.round(haversineKm(num(b.pickup_lat), num(b.pickup_lng), num(b.dropoff_lat), num(b.dropoff_lng)) * 10) / 10;
+  const price = estimateFor(truck, km);
+  if (!price) return bad(res, req, "carrier_no_tariff");
+  const info = db
+    .prepare(
+      `INSERT INTO shipments (shipper_id, carrier_id, pickup_label, pickup_lat, pickup_lng, dropoff_label, dropoff_lat, dropoff_lng,
+        cargo, weight_tons, truck_type, notes, distance_km, auto_price, agreed_price, status, requested_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'requested', datetime('now'))`
+    )
+    .run(req.user.id, carrierId, b.pickup_label, num(b.pickup_lat), num(b.pickup_lng), b.dropoff_label,
+      num(b.dropoff_lat), num(b.dropoff_lng), b.cargo, num(b.weight_tons), truck.truck_type, b.notes || null, km, price, price);
+  notify(carrierId, "booking", "n_booking_request", info.lastInsertRowid, { price });
+  ok(res, { shipment: maskShipment(getShipment(info.lastInsertRowid), req.user.id), price, distance_km: km });
+});
+
+/** Carrier answers a direct booking request: accept -> accepted, decline -> open to everyone. */
+app.post("/api/shipments/:id/respond", auth(), requireRole("carrier"), (req, res) => {
+  const s = getShipment(Number(req.params.id));
+  if (!s) return bad(res, req, "shipment_missing", 404);
+  if (s.carrier_id !== req.user.id || s.status !== "requested") return bad(res, req, "forbidden", 403);
+  if (req.body?.accept) {
+    db.prepare("UPDATE shipments SET status='accepted' WHERE id=?").run(s.id);
+    notify(s.shipper_id, "status", "n_booking_accepted", s.id, { price: s.agreed_price });
+  } else {
+    db.prepare("UPDATE shipments SET status='open', carrier_id=NULL, agreed_price=NULL WHERE id=?").run(s.id);
+    notify(s.shipper_id, "status", "n_booking_declined", s.id);
+  }
+  ok(res, { shipment: maskShipment(getShipment(s.id), req.user.id) });
+});
+
+/** Pending direct requests for the logged-in carrier. */
+app.get("/api/requests", auth(), requireRole("carrier"), (req, res) => {
+  const rows = db.prepare("SELECT id FROM shipments WHERE carrier_id=? AND status='requested' ORDER BY id DESC").all(req.user.id);
+  ok(res, { requests: rows.map((r) => maskShipment(getShipment(r.id), req.user.id)) });
+});
+
+/** Live quote before ordering: what each nearby carrier would charge. */
+app.get("/api/quote", (req, res) => {
+  const km = num(req.query.km);
+  const w = num(req.query.weight_tons) || 0;
+  if (km === null) return bad(res, req, "field_required", 400, "km");
+  const trucks = db
+    .prepare("SELECT t.*, u.name, u.verified FROM trucks t JOIN users u ON u.id=t.user_id WHERE t.available=1 AND t.base_price IS NOT NULL")
+    .all()
+    .filter((t) => (req.query.truck_type ? t.truck_type === req.query.truck_type : true))
+    .filter((t) => t.capacity_tons >= w)
+    .map((t) => ({ carrier_id: t.user_id, name: t.name, verified: !!t.verified, truck_type: t.truck_type, price: estimateFor(t, km), ...ratingOf(t.user_id) }))
+    .filter((t) => t.price)
+    .sort((a, b) => a.price - b.price);
+  const prices = trucks.map((t) => t.price);
+  ok(res, {
+    km,
+    market: suggestPrice(km, w, req.query.truck_type),
+    cheapest: prices[0] ?? null,
+    average: prices.length ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length) : null,
+    carriers: trucks.slice(0, 20),
+  });
+});
+
+// ---------- saved places ----------
+app.get("/api/places", auth(), (req, res) => {
+  ok(res, { places: db.prepare("SELECT * FROM places WHERE user_id=? ORDER BY id DESC LIMIT 30").all(req.user.id) });
+});
+app.post("/api/places", auth(), (req, res) => {
+  const b = req.body || {};
+  if (!b.label || !b.address || num(b.lat) === null || num(b.lng) === null) return bad(res, req, "field_required", 400, "label");
+  const info = db.prepare("INSERT INTO places (user_id,label,address,lat,lng) VALUES (?,?,?,?,?)")
+    .run(req.user.id, String(b.label).slice(0, 40), String(b.address).slice(0, 200), num(b.lat), num(b.lng));
+  ok(res, { place: db.prepare("SELECT * FROM places WHERE id=?").get(info.lastInsertRowid) });
+});
+app.delete("/api/places/:id", auth(), (req, res) => {
+  db.prepare("DELETE FROM places WHERE id=? AND user_id=?").run(Number(req.params.id), req.user.id);
+  ok(res, { success: true });
+});
+
+// ---------- carrier verification (ID / registration card) ----------
+app.post("/api/verify", auth(), (req, res) => {
+  const url = req.body?.doc ? saveDataUrl(req.body.doc) : null;
+  if (!url) return bad(res, req, "bad_image");
+  db.prepare("UPDATE users SET id_doc_url=?, verified=CASE WHEN verified=1 THEN 1 ELSE 0 END WHERE id=?").run(url, req.user.id);
+  ok(res, { success: true, pending: true });
+});
+
+// ---------- extra truck photos ----------
+app.post("/api/truck/photos", auth(), requireRole("carrier"), (req, res) => {
+  const truck = db.prepare("SELECT * FROM trucks WHERE user_id=?").get(req.user.id);
+  if (!truck) return bad(res, req, "register_truck_first");
+  let photos = truck.photos ? JSON.parse(truck.photos) : [];
+  if (req.body?.remove) photos = photos.filter((p) => p !== req.body.remove);
+  if (req.body?.photo) {
+    const url = saveDataUrl(req.body.photo);
+    if (!url) return bad(res, req, "bad_image");
+    photos = [url, ...photos].slice(0, 6);
+  }
+  db.prepare("UPDATE trucks SET photos=? WHERE user_id=?").run(JSON.stringify(photos), req.user.id);
+  ok(res, { photos });
+});
+
+// ---------- printable invoice / receipt ----------
+app.get("/api/shipments/:id/invoice", auth(), (req, res) => {
+  const s = getShipment(Number(req.params.id));
+  if (!s) return bad(res, req, "shipment_missing", 404);
+  if (s.shipper_id !== req.user.id && s.carrier_id !== req.user.id) return bad(res, req, "forbidden", 403);
+  const L = req.user.lang || req.lang;
+  const rtl = L === "ar";
+  const row = (k, v) => `<tr><th>${k}</th><td>${String(v ?? "—")}</td></tr>`;
+  const L1 = { ar: ["فاتورة نقل", "رقم الطلب", "التاريخ", "المرسل", "الناقل", "من", "إلى", "البضاعة", "الوزن", "المسافة", "السعر المتفق عليه", "حالة الدفع", "شكراً لاستعمالكم شاحنتي"],
+               fr: ["Facture de transport", "N° commande", "Date", "Expéditeur", "Transporteur", "De", "Vers", "Marchandise", "Poids", "Distance", "Prix convenu", "Paiement", "Merci d'utiliser Chahina"],
+               en: ["Transport invoice", "Order #", "Date", "Shipper", "Carrier", "From", "To", "Cargo", "Weight", "Distance", "Agreed price", "Payment", "Thank you for using Chahina"] }[L] || null;
+  const W = L1 || ["Transport invoice", "Order #", "Date", "Shipper", "Carrier", "From", "To", "Cargo", "Weight", "Distance", "Agreed price", "Payment", "Chahina"];
+  res.type("html").send(`<!doctype html><html lang="${L}" dir="${rtl ? "rtl" : "ltr"}"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${W[0]} #${s.id}</title>
+<style>body{font-family:system-ui,'Cairo',sans-serif;background:#f6f7fb;margin:0;padding:24px;color:#0b1220}
+.card{max-width:640px;margin:auto;background:#fff;border-radius:16px;padding:28px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
+h1{margin:0 0 4px;font-size:22px}.brand{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.logo{width:44px;height:44px;border-radius:12px;background:#0b1220;color:#f5a524;display:grid;place-items:center;font-size:24px}
+table{width:100%;border-collapse:collapse;margin-top:8px}th,td{padding:10px 8px;border-bottom:1px solid #eef1f6;text-align:${rtl ? "right" : "left"};font-size:14px}
+th{color:#667085;font-weight:600;width:40%}.total{font-size:20px;font-weight:800;color:#0b1220}
+.foot{margin-top:18px;color:#667085;font-size:12px;text-align:center}
+@media print{body{background:#fff;padding:0}.card{box-shadow:none}.noprint{display:none}}
+.btn{display:block;margin:16px auto 0;padding:10px 18px;border:0;border-radius:10px;background:#0b1220;color:#fff;font:inherit;cursor:pointer}</style>
+<div class="card"><div class="brand"><div class="logo">🚚</div><div><h1>${W[0]}</h1><small>#${s.id}</small></div></div>
+<table>
+${row(W[2], String(s.created_at).slice(0, 16))}
+${row(W[3], s.shipper_name)}
+${row(W[4], s.carrier_name || "—")}
+${row(W[5], s.pickup_label)}
+${row(W[6], s.dropoff_label)}
+${row(W[7], s.cargo)}
+${row(W[8], s.weight_tons + " t")}
+${row(W[9], (s.distance_km ?? "—") + " km")}
+${row(W[11], s.payment_status)}
+<tr><th>${W[10]}</th><td class="total">${s.agreed_price ? Number(s.agreed_price).toLocaleString("fr-DZ") + " DZD" : "—"}</td></tr>
+</table>
+<button class="btn noprint" onclick="print()">🖨️ ${L === "fr" ? "Imprimer" : L === "en" ? "Print" : "طباعة"}</button>
+<p class="foot">${W[12]} — chahina</p></div></html>`);
+});
+
 // ---------- misc ----------
 app.get("/api/users/:id", (req, res) => {
-  const u = db.prepare("SELECT id, name, role, city, bio, photo_url, created_at FROM users WHERE id=?").get(Number(req.params.id));
+  const u = db.prepare("SELECT id, name, role, city, bio, photo_url, verified, created_at FROM users WHERE id=?").get(Number(req.params.id));
   if (!u) return bad(res, req, "not_found", 404);
   const truckRow = db.prepare("SELECT * FROM trucks WHERE user_id=?").get(u.id) || null;
   u.truck = truckRow ? { ...truckRow, tariff: tariffOf(truckRow) } : null;
@@ -827,7 +1006,7 @@ app.get("/api/meta", (_req, res) => {
     shipments: db.prepare("SELECT COUNT(*) n FROM shipments").get().n,
     delivered: db.prepare("SELECT COUNT(*) n FROM shipments WHERE status='delivered'").get().n,
   };
-  ok(res, { truck_types: TRUCK_TYPES, stats, payments_enabled: chargily.enabled(), payment_mode: chargily.MODE });
+  ok(res, { version: "2.0", truck_types: TRUCK_TYPES, stats, payments_enabled: chargily.enabled(), payment_mode: chargily.MODE });
 });
 
 app.get("/api/health", (_req, res) => ok(res, { status: "ok", time: new Date().toISOString() }));
@@ -843,4 +1022,4 @@ for (const r of db.prepare("SELECT id, pickup_lat, pickup_lng, dropoff_lat, drop
     .run(Math.round(haversineKm(r.pickup_lat, r.pickup_lng, r.dropoff_lat, r.dropoff_lng) * 10) / 10, r.id);
 }
 
-app.listen(PORT, () => console.log(`Truckly API + web on :${PORT} (payments: ${chargily.enabled() ? chargily.MODE : "off"})`));
+app.listen(PORT, () => console.log(`Chahina API + web on :${PORT} (payments: ${chargily.enabled() ? chargily.MODE : "off"})`));

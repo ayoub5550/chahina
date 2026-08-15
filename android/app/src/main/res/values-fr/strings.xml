@@ -2,4 +2,6 @@
     <string name="app_name">Chahina</string>
     <string name="no_connection">Pas de connexion Internet. Vérifiez votre réseau puis réessayez.</string>
     <string name="retry">Réessayer</string>
+    <string name="downloading">Téléchargement…</string>
+    <string name="press_again_exit">Appuyez encore pour quitter</string>
 </resources>

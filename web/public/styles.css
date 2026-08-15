@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Truckly / شاحنتي — design system v4
+   شاحنتي / Chahina — design system v5
    Dark-first, high contrast, mobile-first. Light theme via [data-theme=light].
    ========================================================================== */
 :root{
@@ -341,3 +341,29 @@ h4{margin:18px 0 8px;font-size:14.5px;color:var(--muted);text-transform:uppercas
 @keyframes slideup{from{transform:translateY(100%)}to{transform:none}}
 @keyframes pop{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+
+/* ===== v2 additions ===== */
+.filters-adv { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 0; }
+.filters-adv .mini { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.filters-adv .mini input, .filters-adv .mini select { width: 100%; }
+.filters-adv .switch { grid-column: 1 / -1; }
+.verified { color: #16a34a; font-size: 13px; }
+.verified-badge { background: rgba(22,163,74,.15); color: #16a34a; }
+.requests .item.req { border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.requests .panel-head { margin-bottom: 6px; }
+.pick-row { display: flex; gap: 6px; }
+.pick-row input { flex: 1; }
+.place-pick { width: 100%; margin-top: -4px; }
+.quote-box { border: 1px dashed var(--line); border-radius: 12px; padding: 10px 12px; font-size: 14px; display: grid; gap: 4px; }
+.quote-box .warn { color: #d97706; font-size: 12px; }
+.card-actions.center { justify-content: center; flex-wrap: wrap; }
+.onboard { position: fixed; inset: 0; background: rgba(5,10,20,.82); backdrop-filter: blur(6px); display: grid; place-items: center; z-index: 90; padding: 20px; }
+.onboard-card { background: var(--card); border-radius: 22px; padding: 26px 22px; max-width: 360px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.4); animation: pop .25s ease; }
+.ob-icon { font-size: 56px; margin-bottom: 8px; }
+.onboard-card h3 { margin: 6px 0; }
+.onboard-card p { color: var(--muted); font-size: 14px; line-height: 1.7; }
+.ob-dots { display: flex; gap: 6px; justify-content: center; margin: 14px 0; }
+.ob-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+.ob-dots i.on { background: var(--accent); width: 20px; border-radius: 4px; }
+.btn.block.ghost.small { margin-top: 6px; }
+@keyframes pop { from { transform: scale(.94); opacity: 0 } to { transform: scale(1); opacity: 1 } }

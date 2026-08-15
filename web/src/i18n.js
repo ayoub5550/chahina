@@ -1,5 +1,12 @@
 /** Server-side messages in ar / fr / en. */
 const M = {
+  too_many_tries: { ar: "محاولات كثيرة، انتظر 5 دقائق", fr: "Trop de tentatives, attendez 5 minutes", en: "Too many attempts, wait 5 minutes" },
+  truck_busy: { ar: "الشاحنة غير متاحة حالياً", fr: "Ce camion n'est pas disponible", en: "This truck is not available" },
+  over_capacity: { ar: "وزن البضاعة يفوق حمولة الشاحنة", fr: "Le poids dépasse la capacité du camion", en: "Weight exceeds the truck capacity" },
+  carrier_no_tariff: { ar: "هذا الناقل لم يحدّد سعره بعد", fr: "Ce transporteur n'a pas encore fixé son tarif", en: "This carrier has not set a tariff yet" },
+  n_booking_request: { ar: "طلب حجز مباشر لشاحنتك 🚚", fr: "Nouvelle demande de réservation 🚚", en: "New direct booking request 🚚" },
+  n_booking_accepted: { ar: "الناقل قبل طلبك ✅", fr: "Le transporteur a accepté ✅", en: "The carrier accepted ✅" },
+  n_booking_declined: { ar: "الناقل اعتذر، طلبك صار متاحاً للجميع", fr: "Le transporteur a décliné, votre demande est ouverte à tous", en: "Carrier declined, your request is now open to all" },
   login_required: {
     ar: "مطلوب تسجيل الدخول",
     fr: "Connexion requise",

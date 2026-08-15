@@ -162,6 +162,27 @@ CREATE TABLE IF NOT EXISTS favorites (
 CREATE INDEX IF NOT EXISTS idx_fav_user ON favorites(user_id);
 `);
 
+
+// v5: verification, saved places, extra truck photos
+addColumn("users", "verified", "INTEGER NOT NULL DEFAULT 0");
+addColumn("users", "id_doc_url", "TEXT");
+addColumn("trucks", "photos", "TEXT");            // JSON array of extra photos
+addColumn("shipments", "requested_at", "TEXT");
+addColumn("shipments", "auto_price", "REAL");     // price computed from carrier tariff
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS places (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  label TEXT NOT NULL,
+  address TEXT NOT NULL,
+  lat REAL NOT NULL,
+  lng REAL NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_places_user ON places(user_id);
+`);
+
 // truck types used to be stored as Arabic labels; migrate them to stable keys
 const LEGACY = {
   "\u0634\u0627\u062d\u0646\u0629 \u0635\u063a\u064a\u0631\u0629": "small",

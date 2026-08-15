@@ -1,4 +1,4 @@
-/* شاحنتي / Truckly — PWA front-end (ar / fr / en) */
+/* شاحنتي / Chahina — PWA front-end (ar / fr / en) */
 const API = "/api";
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -51,7 +51,7 @@ $$("#lang-switch-auth button").forEach((b) => (b.onclick = () => setLang(b.datas
 $("#lang-select").onchange = (e) => setLang(e.target.value);
 
 /* ---------- utils ---------- */
-async function api(path, { method = "GET", body } = {}) {
+async function api(path, { method = "GET", body, raw = false } = {}) {
   const res = await fetch(API + path, {
     method,
     headers: {
@@ -61,6 +61,11 @@ async function api(path, { method = "GET", body } = {}) {
     },
     body: body ? JSON.stringify(body) : undefined,
   });
+  if (raw) {
+    const text = await res.text();
+    if (!res.ok) throw new Error(T("generic_error"));
+    return text;
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || T("generic_error"));
   return data;
@@ -339,6 +344,10 @@ async function refreshTrucks() {
   if ($("#filter-sort").value) q.set("sort", $("#filter-sort").value);
   if ($("#filter-tripkm").value) q.set("trip_km", $("#filter-tripkm").value);
   if ($("#filter-fav").checked) q.set("only_favorites", "1");
+  if ($("#filter-q") && $("#filter-q").value.trim()) q.set("q", $("#filter-q").value.trim());
+  if ($("#filter-maxkm") && $("#filter-maxkm").value) q.set("max_per_km", $("#filter-maxkm").value);
+  if ($("#filter-rating") && $("#filter-rating").value) q.set("min_rating", $("#filter-rating").value);
+  if ($("#filter-verified") && $("#filter-verified").checked) q.set("verified", "1");
   const { trucks } = await api("/trucks/nearby?" + q);
   state.markers.forEach((m) => state.map.removeLayer(m));
   state.markers = trucks.map((t) =>
@@ -357,7 +366,7 @@ async function refreshTrucks() {
           (t) => `<div class="item row-card ${t.cheapest ? "cheap" : ""}">
         ${t.photo_url ? `<img class="truck-thumb" src="${esc(t.photo_url)}" alt="">` : avatar(null, t.name)}
         <div class="grow">
-          <div class="row"><b>${t.online ? '<span class="online-dot"></span>' : ""}${esc(t.name)}</b>${
+          <div class="row"><b>${t.online ? '<span class="online-dot"></span>' : ""}${esc(t.name)}${t.verified ? ' <span class="verified" title="'+T("verified")+'">✔</span>' : ""}</b>${
             t.cheapest ? `<span class="badge cheap">${T("cheapest")} 🏆</span>` : t.distance_km != null ? `<span class="badge">${t.distance_km} ${T("km")}</span>` : ""
           }</div>
           <div class="meta">${truckLabel(t.truck_type)} • ${t.capacity_tons} ${T("ton")}${t.plate ? " • " + esc(t.plate) : ""}</div>
@@ -365,8 +374,9 @@ async function refreshTrucks() {
           ${t.trip_estimate != null ? `<div class="row"><span class="meta">${T("est_for_trip")}</span><span class="price-tag">${money(t.trip_estimate)}</span></div>` : ""}
           <div class="meta">${stars(t.rating, t.ratings_count)}</div>
           <div class="card-actions">
+            <button class="btn primary small" data-book="${t.user_id}" data-bookname="${esc(t.name)}">⚡ ${T("book_now")}</button>
             <button class="btn ghost small" data-profile="${t.user_id}">${T("view_profile")}</button>
-            <button class="btn primary small" data-chat="${t.user_id}">💬 ${T("chat")}</button>
+            <button class="btn ghost small" data-chat="${t.user_id}">💬 ${T("chat")}</button>
             <button class="btn ghost small fav ${t.favorite ? "on" : ""}" data-fav="${t.user_id}" title="${T("favorite")}">${t.favorite ? "★" : "☆"}</button>
           </div>
         </div>
@@ -648,6 +658,16 @@ async function openShipment(id) {
       .map((n) => `<button class="btn ghost" data-rate="${n}" data-sid="${s.id}">${"★".repeat(n)}</button>`)
       .join("")}</div>`;
   }
+  if (!shipper && s.carrier_id === state.user.id && s.status === "requested") {
+    html += `<div class="req-actions"><button class="btn primary block" data-respond="1" data-sid="${s.id}">✅ ${T("accept_request")}</button>
+      <button class="btn ghost block" data-respond="0" data-sid="${s.id}">${T("decline_request")}</button></div>`;
+  }
+  if (shipper && s.status === "requested") {
+    html += `<p class="hint">${T("waiting_carrier")}</p><button class="btn ghost block" data-cancel="${s.id}">${T("cancel_request")}</button>`;
+  }
+  if (s.agreed_price && ["accepted", "picked_up", "delivered"].includes(s.status)) {
+    html += `<button class="btn ghost block" data-invoice="${s.id}">🧾 ${T("invoice")}</button>`;
+  }
   openModal(`${T("shipment_details")} #${s.id}`, html);
   wireShipmentActions(s.id);
 
@@ -663,6 +683,22 @@ async function openShipment(id) {
     closeModal();
     loadShipments();
   };
+  const invBtn = body.querySelector("[data-invoice]");
+  if (invBtn) invBtn.onclick = () => {
+    const w = window.open("", "_blank");
+    api(`/shipments/${invBtn.dataset.invoice}/invoice`, { raw: true })
+      .then((html) => { if (w) { w.document.write(html); w.document.close(); } })
+      .catch((e) => toast(e.message));
+  };
+  body.querySelectorAll("[data-respond]").forEach((b) => (b.onclick = async () => {
+    try {
+      await api(`/shipments/${b.dataset.sid}/respond`, { method: "POST", body: { accept: b.dataset.respond === "1" } });
+      toast(b.dataset.respond === "1" ? T("request_accepted") : T("request_declined"));
+      closeModal();
+      loadShipments();
+      if (window.CHV2) CHV2.loadRequests();
+    } catch (e) { toast(e.message); }
+  }));
   const statusBtn = body.querySelector("[data-status]");
   if (statusBtn) statusBtn.onclick = async () => {
     let pod = null;
@@ -892,7 +928,12 @@ async function loadProfile() {
       <div class="meta">${esc(me.user.phone)}${me.user.city ? " • " + esc(me.user.city) : ""}</div>
       <div class="meta">${stars(pub.user.rating, pub.user.ratings_count)} • ${pub.user.trips} ${T("trips_done")}</div>
       ${me.user.bio ? `<div class="meta">${esc(me.user.bio)}</div>` : ""}
-      <button id="btn-edit-profile" class="btn ghost small">${T("edit_profile")}</button>
+      ${me.user.verified ? `<span class="badge verified-badge">✔ ${T("verified")}</span>` : ""}
+      <div class="card-actions center">
+        <button id="btn-edit-profile" class="btn ghost small">${T("edit_profile")}</button>
+        <button id="btn-places" class="btn ghost small">📍 ${T("my_places")}</button>
+        ${me.user.verified ? "" : `<button id="btn-verify" class="btn ghost small">✔ ${T("verify_account")}</button>`}
+      </div>
     </div>
     ${
       me.truck
@@ -913,6 +954,8 @@ async function loadProfile() {
         : `<p class="hint">${T("no_ratings")}</p>`
     }`;
   $("#btn-edit-profile").onclick = () => openProfileEditor(me.user);
+  if ($("#btn-places")) $("#btn-places").onclick = () => window.CHV2 && CHV2.openPlaces();
+  if ($("#btn-verify")) $("#btn-verify").onclick = () => window.CHV2 && CHV2.openVerify();
 }
 
 function openProfileEditor(u) {
@@ -1065,3 +1108,8 @@ async function openChat(userId, shipmentId = null) {
 /* ---------- start ---------- */
 boot();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+
+
+/* ---------- v2 hooks ---------- */
+window.CH = { get state() { return state; }, api, T, toast, money, esc, openModal, closeModal, stars, truckLabel,
+  refreshTrucks, loadShipments, getPosition, geocode, pickOnMap, openChat, openProfile, avatar, readImage, wirePhotoPicker, empty, timeShort };
