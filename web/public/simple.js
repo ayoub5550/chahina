@@ -46,6 +46,9 @@
         info.textContent = T("rating", "التقييم") + ": " + rating.textContent.trim();
         box.appendChild(info);
       }
+      mk("\uD83D\uDCC8", T("my_stats", "إحصائياتي"), () => { if (window.CHV4) CHV4.openStats(); });
+      if (window.CH && CH.state.user && CH.state.user.role === "carrier")
+        mk("\uD83D\uDDBC\uFE0F", T("truck_photos", "صور شاحنتي"), () => { if (window.CHV3) CHV3.openGallery(); });
       mk("\uD83D\uDCCA", T("dashboard", "لوحة التحكم"), () => {
         const n = document.querySelector('.bottom-nav .nav[data-view="dash"]');
         if (n) { n.classList.remove("nav-hidden"); n.click(); setTimeout(() => n.classList.add("nav-hidden"), 400); }

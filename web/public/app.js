@@ -147,9 +147,11 @@ function openModal(title, html) {
   $("#modal-title").textContent = title;
   $("#modal-body").innerHTML = html;
   $("#modal").classList.remove("hidden");
+  document.body.classList.add("modal-open");
 }
 function closeModal() {
   $("#modal").classList.add("hidden");
+  document.body.classList.remove("modal-open");
   if (state.trackTimer) { clearInterval(state.trackTimer); state.trackTimer = null; }
 }
 $("#modal-close").onclick = closeModal;
@@ -1078,10 +1080,20 @@ async function openChat(userId, shipmentId = null) {
   const render = (data) => {
     const box = $("#chat-msgs");
     const atBottom = !box || box.scrollHeight - box.scrollTop - box.clientHeight < 60;
+    const lastMine = [...data.messages].reverse().find((m) => m.sender_id === data.me);
+    const bubbleBody = (m) => {
+      if (m.kind === "image" && m.media_url)
+        return `<img class="chat-img" src="${esc(mediaUrl(m.media_url))}" alt="" data-img="${esc(mediaUrl(m.media_url))}">`;
+      if (m.kind === "location" && m.lat != null)
+        return `<a class="chat-loc" target="_blank" rel="noopener" href="https://www.openstreetmap.org/?mlat=${m.lat}&mlon=${m.lng}#map=15/${m.lat}/${m.lng}">📍 ${T("shared_location")}</a>`;
+      return esc(m.text);
+    };
     const html = data.messages.length
       ? data.messages
           .map(
-            (m) => `<div class="bubble ${m.sender_id === data.me ? "me" : "them"}">${esc(m.text)}<time>${timeShort(m.created_at)}</time></div>`
+            (m) => `<div class="bubble ${m.sender_id === data.me ? "me" : "them"}">${bubbleBody(m)}<time>${timeShort(m.created_at)}${
+              lastMine && m.id === lastMine.id ? (m.seen ? " ✓✓" : " ✓") : ""
+            }</time></div>`
           )
           .join("")
       : `<p class="hint">${T("chat_empty")}</p>`;
@@ -1098,10 +1110,14 @@ async function openChat(userId, shipmentId = null) {
       T("chat_with", data.user.name),
       `<div class="chat-wrap">
         <div id="chat-msgs" class="chat-msgs"></div>
+        <div id="chat-quick" class="chat-quick"></div>
         <form id="chat-form" class="chat-input">
-          <input name="text" autocomplete="off" placeholder="${T("type_message")}" required>
+          <button class="btn ghost tiny" type="button" id="chat-photo" title="${T("send_photo")}">📷</button>
+          <button class="btn ghost tiny" type="button" id="chat-loc" title="${T("send_location")}">📍</button>
+          <input name="text" autocomplete="off" placeholder="${T("type_message")}">
           <button class="btn primary" type="submit">${T("send")}</button>
         </form>
+        <input type="file" id="chat-file" accept="image/*" class="hidden">
       </div>`
     );
     render(data);
@@ -1117,6 +1133,35 @@ async function openChat(userId, shipmentId = null) {
         render(await api("/messages/" + userId));
       } catch (err) { toast(err.message); }
     };
+    /* quick replies, photo and location sharing */
+    const post = async (body) => {
+      try {
+        await api("/messages/" + userId, { method: "POST", body: { ...body, shipment_id: shipmentId } });
+        render(await api("/messages/" + userId));
+      } catch (err) { toast(err.message); }
+    };
+    const quick = state.user.role === "carrier" ? ["q_on_my_way", "q_price_ok", "q_when_ready", "q_send_location"]
+                                                : ["q_hello", "q_how_much", "q_when_free", "q_send_location"];
+    $("#chat-quick").innerHTML = quick.map((k) => `<button type="button" class="chip" data-q="${k}">${T(k)}</button>`).join("");
+    $$("#chat-quick [data-q]").forEach((b) => (b.onclick = () => post({ text: T(b.dataset.q) })));
+    $("#chat-photo").onclick = () => $("#chat-file").click();
+    $("#chat-file").onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      toast(T("sending"));
+      try { await post({ photo: await readImage(file) }); } catch (err) { toast(err.message); }
+      e.target.value = "";
+    };
+    $("#chat-loc").onclick = async () => {
+      toast(T("locating"));
+      try { const p = await getPosition(); await post({ lat: p.lat, lng: p.lng }); }
+      catch (err) { toast(T("loc_failed")); }
+    };
+    $("#chat-msgs").addEventListener("click", (e) => {
+      const img = e.target.closest("[data-img]");
+      if (img) window.open(img.dataset.img, "_blank");
+    });
+
     // live refresh while the chat is open
     state.chatTimer = setInterval(async () => {
       if ($("#modal").classList.contains("hidden") || !$("#chat-msgs")) return clearInterval(state.chatTimer);
@@ -1131,5 +1176,5 @@ if ("serviceWorker" in navigator && location.protocol.startsWith("http")) naviga
 
 
 /* ---------- v2 hooks ---------- */
-window.CH = { get state() { return state; }, api, T, toast, money, esc, openModal, closeModal, stars, truckLabel,
+window.CH = { get state() { return state; }, api, T, toast, money, esc, openModal, closeModal, stars, truckLabel, mediaUrl,
   refreshTrucks, loadShipments, getPosition, geocode, pickOnMap, openChat, openProfile, avatar, readImage, wirePhotoPicker, empty, timeShort };

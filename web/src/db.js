@@ -198,4 +198,10 @@ for (const [label, key] of Object.entries(LEGACY)) {
   db.prepare("UPDATE shipments SET truck_type=? WHERE truck_type=?").run(key, label);
 }
 
+// v6: rich chat (photos, location), message reactions
+addColumn("messages", "kind", "TEXT NOT NULL DEFAULT 'text'");
+addColumn("messages", "media_url", "TEXT");
+addColumn("messages", "lat", "REAL");
+addColumn("messages", "lng", "REAL");
+
 module.exports = db;

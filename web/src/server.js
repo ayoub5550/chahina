@@ -835,6 +835,24 @@ app.post("/api/favorites/:carrierId", auth(), (req, res) => {
 });
 
 // ---------- dashboard ----------
+// ---------- v4: one delivered trip still waiting for my rating ----------
+app.get("/api/pending-rating", auth(), (req, res) => {
+  const col = req.user.role === "shipper" ? "shipper_id" : "carrier_id";
+  const row = db
+    .prepare(
+      `SELECT s.id FROM shipments s
+        WHERE s.${col}=? AND s.status='delivered'
+          AND NOT EXISTS (SELECT 1 FROM ratings r WHERE r.shipment_id=s.id AND r.rater_id=?)
+        ORDER BY s.id DESC LIMIT 1`
+    )
+    .get(req.user.id, req.user.id);
+  if (!row) return ok(res, { shipment: null });
+  const s = getShipment(row.id);
+  const otherId = req.user.role === "shipper" ? s.carrier_id : s.shipper_id;
+  const other = otherId ? db.prepare("SELECT id, name, photo_url FROM users WHERE id=?").get(otherId) : null;
+  ok(res, { shipment: { id: s.id, cargo: s.cargo, distance_km: s.distance_km, agreed_price: s.agreed_price, delivered_at: s.delivered_at }, other });
+});
+
 app.get("/api/dashboard", auth(), (req, res) => {
   const me = req.user.id;
   const isCarrier = req.user.role === "carrier";
@@ -1004,12 +1022,27 @@ app.post("/api/messages/:userId", auth(), (req, res) => {
   const other = Number(req.params.userId);
   if (other === req.user.id) return bad(res, req, "forbidden", 403);
   if (!db.prepare("SELECT 1 FROM users WHERE id=?").get(other)) return bad(res, req, "not_found", 404);
-  const text = String(req.body?.text || "").trim().slice(0, 2000);
+  let text = String(req.body?.text || "").trim().slice(0, 2000);
+  let kind = "text";
+  let media_url = null;
+  let lat = null,
+    lng = null;
+  if (req.body?.photo) {
+    media_url = saveDataUrl(req.body.photo);
+    if (!media_url) return bad(res, req, "bad_image");
+    kind = "image";
+    if (!text) text = "\u{1F4F7}";
+  } else if (num(req.body?.lat) !== null && num(req.body?.lng) !== null) {
+    lat = num(req.body.lat);
+    lng = num(req.body.lng);
+    kind = "location";
+    if (!text) text = "\u{1F4CD}";
+  }
   if (!text) return bad(res, req, "empty_message");
   const sid = num(req.body?.shipment_id) || null; // 0/null/undefined -> no shipment link
   const info = db
-    .prepare("INSERT INTO messages (sender_id, receiver_id, shipment_id, text) VALUES (?,?,?,?)")
-    .run(req.user.id, other, sid, text);
+    .prepare("INSERT INTO messages (sender_id, receiver_id, shipment_id, text, kind, media_url, lat, lng) VALUES (?,?,?,?,?,?,?,?)")
+    .run(req.user.id, other, sid, text, kind, media_url, lat, lng);
   notify(other, "message", "n_new_message", sid, { from: req.user.name, user_id: req.user.id });
   ok(res, { message: db.prepare("SELECT * FROM messages WHERE id=?").get(info.lastInsertRowid) });
 });
@@ -1027,7 +1060,7 @@ app.get("/api/meta", (_req, res) => {
     shipments: db.prepare("SELECT COUNT(*) n FROM shipments").get().n,
     delivered: db.prepare("SELECT COUNT(*) n FROM shipments WHERE status='delivered'").get().n,
   };
-  ok(res, { version: "2.5", truck_types: TRUCK_TYPES, stats, payments_enabled: chargily.enabled(), payment_mode: chargily.MODE });
+  ok(res, { version: "5.0", truck_types: TRUCK_TYPES, stats, payments_enabled: chargily.enabled(), payment_mode: chargily.MODE });
 });
 
 app.get("/api/health", (_req, res) => ok(res, { status: "ok", time: new Date().toISOString() }));
