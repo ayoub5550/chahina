@@ -12,6 +12,7 @@
 const https = require("https");
 const db = require("./db");
 const { TRUCK_TYPES } = require("./i18n");
+const llm = require("./llm");
 
 // ---------- geocoding (OSM Nominatim + local cache) ----------
 db.exec(`CREATE TABLE IF NOT EXISTS geocache (
@@ -155,20 +156,44 @@ function haversineKm(a, b, c, d) {
 /**
  * @param {object} opts { text, user, quote } where quote(km, weight, type) -> quote payload
  */
-async function ask({ text, user, quote }) {
+async function ask({ text, user, quote, history }) {
   const raw = String(text || "").slice(0, 500);
-  const lang = detectLang(raw);
-  const intent = user && user.role === "carrier" && /سعر|prix|price/i.test(raw) ? "pricing_advice" : intentOf(raw);
-  const weight = parseWeight(raw);
-  const type = parseTruckType(raw);
+  let lang = detectLang(raw);
+  let intent = user && user.role === "carrier" && /سعر|prix|price/i.test(raw) ? "pricing_advice" : intentOf(raw);
+  let weight = parseWeight(raw);
+  let type = parseTruckType(raw);
+  let llmFrom = null, llmTo = null, llmKm = null;
+
+  // real LLM understanding (falls back silently to the rule engine)
+  if (llm.enabled()) {
+    try {
+      const x = await llm.extract(raw);
+      if (x) {
+        if (x.lang && ["ar", "fr", "en"].includes(x.lang)) lang = x.lang;
+        if (x.intent && ["quote", "help", "pricing_advice", "smalltalk"].includes(x.intent)) {
+          intent = x.intent === "smalltalk" ? "help" : x.intent;
+          // pricing advice is a carrier-only feature; shippers always get a quote
+          if (intent === "pricing_advice" && !(user && user.role === "carrier")) intent = "quote";
+        }
+        if (user && user.role === "carrier" && /تسعير|بالكم|combien facturer|tarif|pricing/i.test(raw)) intent = "pricing_advice";
+        if (x.weight_tons && !weight) weight = Number(x.weight_tons) || null;
+        if (x.km) llmKm = Number(x.km) || null;
+        llmFrom = x.from || null;
+        llmTo = x.to || null;
+      }
+    } catch (e) {
+      /* keep rule-based result */
+    }
+  }
 
   if (intent === "pricing_advice") return pricingAdvice({ lang, user, type });
 
   if (intent === "quote") {
-    let km = parseKm(raw);
-    let from = null;
-    let to = null;
+    let km = parseKm(raw) || llmKm;
+    let from = llmFrom;
+    let to = llmTo;
     for (const re of FROM_TO) {
+      if (from && to) break;
       const m = raw.match(re);
       if (m) {
         from = cleanPlace(m[1]);
@@ -222,6 +247,15 @@ async function ask({ text, user, quote }) {
           en: `No matching carrier right now. Fair price estimate: **${fmt(market.suggested)} DZD**. Post your request.`,
         }[lang];
     return { lang, reply: `${head}\n${body}`, km, weight, truck_type: type, carriers: top, quote: q };
+  }
+
+  if (llm.enabled()) {
+    try {
+      const txt = await llm.answer({ text: raw, lang, role: user && user.role, context: null });
+      if (txt && txt.length > 3) return { lang, reply: txt, chips: true };
+    } catch (e) {
+      /* fall through to canned help */
+    }
   }
 
   const list = HELP[lang].map(([q, a]) => `**${q}؟**\n${a}`.replace("؟", lang === "ar" ? "؟" : "")).join("\n\n");
