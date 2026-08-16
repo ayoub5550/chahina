@@ -1,1 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="#0b1220"/><text x="96" y="128" font-size="96" text-anchor="middle">🚚</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#141c2e"/><stop offset="1" stop-color="#0b1220"/>
+    </linearGradient>
+    <linearGradient id="amber" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffd76b"/><stop offset="1" stop-color="#ff9f1c"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="44" fill="url(#bg)"/>
+  <!-- route -->
+  <path d="M28 138c22 0 26-22 48-22s26 22 48 22 32-14 40-30" fill="none" stroke="#ffffff" stroke-opacity=".13"
+        stroke-width="7" stroke-linecap="round" stroke-dasharray="14 12"/>
+  <!-- truck body -->
+  <g>
+    <rect x="34" y="62" width="66" height="46" rx="9" fill="url(#amber)"/>
+    <path d="M104 74h24l20 22v12h-44z" fill="url(#amber)" opacity=".92"/>
+    <rect x="112" y="79" width="20" height="15" rx="4" fill="#0b1220" opacity=".55"/>
+    <circle cx="60" cy="116" r="13" fill="#0b1220"/><circle cx="60" cy="116" r="5.5" fill="url(#amber)"/>
+    <circle cx="128" cy="116" r="13" fill="#0b1220"/><circle cx="128" cy="116" r="5.5" fill="url(#amber)"/>
+  </g>
+  <!-- location pin -->
+  <path d="M96 22c-13 0-23 10-23 23 0 16 23 33 23 33s23-17 23-33c0-13-10-23-23-23z" fill="#ffffff"/>
+  <circle cx="96" cy="45" r="8.5" fill="#ff9f1c"/>
+</svg>

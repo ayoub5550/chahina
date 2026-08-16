@@ -10,6 +10,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const db = require("./db");
 const chargily = require("./chargily");
+const ai = require("./ai");
 const { t, pickLang, LANGS, TRUCK_TYPES } = require("./i18n");
 const fs = require("fs");
 const crypto = require("crypto");
@@ -670,26 +671,46 @@ app.get("/api/requests", auth(), requireRole("carrier"), (req, res) => {
 });
 
 /** Live quote before ordering: what each nearby carrier would charge. */
-app.get("/api/quote", (req, res) => {
-  const km = num(req.query.km);
-  const w = num(req.query.weight_tons) || 0;
-  if (km === null) return bad(res, req, "field_required", 400, "km");
+function quoteFor(km, w, truck_type) {
   const trucks = db
     .prepare("SELECT t.*, u.name, u.verified FROM trucks t JOIN users u ON u.id=t.user_id WHERE t.available=1 AND t.base_price IS NOT NULL")
     .all()
-    .filter((t) => (req.query.truck_type ? t.truck_type === req.query.truck_type : true))
-    .filter((t) => t.capacity_tons >= w)
+    .filter((t) => (truck_type ? t.truck_type === truck_type : true))
+    .filter((t) => t.capacity_tons >= (w || 0))
     .map((t) => ({ carrier_id: t.user_id, name: t.name, verified: !!t.verified, truck_type: t.truck_type, price: estimateFor(t, km), ...ratingOf(t.user_id) }))
     .filter((t) => t.price)
     .sort((a, b) => a.price - b.price);
   const prices = trucks.map((t) => t.price);
-  ok(res, {
+  return {
     km,
-    market: suggestPrice(km, w, req.query.truck_type),
+    market: suggestPrice(km, w || 0, truck_type),
     cheapest: prices[0] ?? null,
     average: prices.length ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length) : null,
     carriers: trucks.slice(0, 20),
-  });
+  };
+}
+
+app.get("/api/quote", (req, res) => {
+  const km = num(req.query.km);
+  const w = num(req.query.weight_tons) || 0;
+  if (km === null) return bad(res, req, "field_required", 400, "km");
+  ok(res, quoteFor(km, w, req.query.truck_type));
+});
+
+/** ---------- smart assistant (AI) ---------- */
+app.post("/api/ai/ask", auth(), async (req, res) => {
+  try {
+    const out = await ai.ask({ text: req.body?.text, user: req.user, quote: quoteFor });
+    ok(res, out);
+  } catch (e) {
+    res.status(500).json({ error: String(e.message || e) });
+  }
+});
+
+app.get("/api/ai/geocode", auth(), async (req, res) => {
+  const hit = await ai.geocode(req.query.q);
+  if (!hit) return res.status(404).json({ error: "not_found" });
+  ok(res, hit);
 });
 
 // ---------- saved places ----------
@@ -1006,7 +1027,7 @@ app.get("/api/meta", (_req, res) => {
     shipments: db.prepare("SELECT COUNT(*) n FROM shipments").get().n,
     delivered: db.prepare("SELECT COUNT(*) n FROM shipments WHERE status='delivered'").get().n,
   };
-  ok(res, { version: "2.1", truck_types: TRUCK_TYPES, stats, payments_enabled: chargily.enabled(), payment_mode: chargily.MODE });
+  ok(res, { version: "2.2", truck_types: TRUCK_TYPES, stats, payments_enabled: chargily.enabled(), payment_mode: chargily.MODE });
 });
 
 app.get("/api/health", (_req, res) => ok(res, { status: "ok", time: new Date().toISOString() }));
