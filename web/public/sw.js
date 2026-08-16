@@ -1,4 +1,4 @@
-const CACHE = "chahina-v31";
+const CACHE = "chahina-v32";
 const ASSETS = ["./", "./styles.css", "./ux.css", "./app.js", "./v2.js", "./ux.js", "./ai.js", "./simple.js",
   "./i18n.js", "./config.js", "./manifest.webmanifest",
   "./vendor/leaflet/leaflet.css", "./vendor/leaflet/leaflet.js"];

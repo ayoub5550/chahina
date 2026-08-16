@@ -257,3 +257,28 @@ body.splashing .onboard,body.splashing .modal{display:none!important}
 .ai-card b,.ai-card span,.ai-card small{white-space:nowrap;letter-spacing:normal;word-spacing:normal}
 .top-actions{display:flex;align-items:center;gap:10px}
 .top-actions .btn{position:relative;flex:0 0 auto}
+
+/* ---- carrier work home (v2.5) ---- */
+#carrier-work{display:grid;gap:12px;margin-bottom:6px}
+.cw-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cw-stat{background:var(--card,#151a23);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:10px 8px;text-align:center}
+.cw-stat b{display:block;font-size:18px;line-height:1.2}
+.cw-stat span{font-size:11px;opacity:.7}
+.cw-stat.hot{border-color:var(--brand,#f5a524);box-shadow:0 0 0 2px rgba(245,165,36,.15)}
+.cw-stat.wide{grid-column:1/-1}
+.cw-stat.wide b{font-size:20px;color:var(--brand,#f5a524)}
+.cw-tariff{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card,#151a23);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:10px 12px}
+.cw-tariff span{font-size:12px;opacity:.7;display:block}
+.cw-tip{font-size:12px;opacity:.85;background:rgba(245,165,36,.12);border-radius:12px;padding:8px 10px}
+.cw-head{display:flex;align-items:center;justify-content:space-between;margin-top:2px}
+.cw-load{background:var(--card,#151a23);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:12px;display:grid;gap:6px}
+.cw-load .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.cw-km{font-size:12px;opacity:.75;white-space:nowrap}
+.cw-offer{display:flex;align-items:center;gap:8px}
+.cw-offer input.cw-price{flex:1;text-align:center;font-weight:700;font-size:16px;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:inherit}
+.btn.tiny{padding:8px 12px;font-size:16px;line-height:1;border-radius:12px}
+.cw-actions{display:flex;gap:8px;align-items:center}
+.cw-actions .btn.block{flex:1;white-space:nowrap}
+.cw-sent{font-size:13px;background:rgba(46,204,113,.12);border-radius:12px;padding:8px 10px}
+.cw-empty{font-size:13px;opacity:.7;text-align:center;padding:14px}
+body.is-carrier .map-panel{max-height:78%}
