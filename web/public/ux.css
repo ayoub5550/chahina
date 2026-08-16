@@ -230,3 +230,30 @@ body.splashing .onboard,body.splashing .modal{display:none!important}
 .menu-note{font-size:14px;color:var(--muted,#8ea3c4);padding:2px 4px 6px}
 .menu-chip{min-height:44px;padding:0 16px;border-radius:999px;background:var(--surface,#111c33);
   border:1px solid var(--line,#22304d);color:inherit;font:inherit;font-size:14px;cursor:pointer}
+
+/* --- mobile polish (v2.4) --- */
+.row-card .btn{white-space:nowrap}
+.row-card .btn.small{padding:0 12px;font-size:13px}
+.leaflet-control-attribution{display:none}  /* credit moved into the ☰ menu */
+.leaflet-control-zoom{margin-top:70px!important}
+@media (max-width:430px){
+  .row-card{gap:8px}
+  .row-card .actions{gap:6px}
+  .truck-thumb{width:52px;height:52px}
+  .hero-ask{font-size:15px}
+}
+
+/* assistant: full-height focused sheet on phones */
+@media (max-width:480px){
+  .ai-panel{inset-inline:0;bottom:0;height:86vh;max-height:86vh;border-radius:22px 22px 0 0;
+    padding-bottom:env(safe-area-inset-bottom)}
+  body.ai-open .bottom-nav{transform:translateY(110%);transition:transform .3s var(--spring)}
+  body.ai-open::before{content:"";position:fixed;inset:0;background:rgba(3,8,20,.55);
+    backdrop-filter:blur(2px);z-index:1290;animation:fadeIn .25s both}
+  .ai-msg{max-width:92%;font-size:15px}
+  .ai-form input{min-height:48px}
+}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.ai-card b,.ai-card span,.ai-card small{white-space:nowrap;letter-spacing:normal;word-spacing:normal}
+.top-actions{display:flex;align-items:center;gap:10px}
+.top-actions .btn{position:relative;flex:0 0 auto}

@@ -66,6 +66,10 @@
       box.appendChild(langs);
       mk("\uD83C\uDF13", T("theme", "الوضع الليلي / النهاري"), () => { const el = $("#btn-theme"); el && el.click(); });
       mk("\uD83D\uDEAA", T("logout", "خروج"), () => { const el = $("#btn-logout"); el && el.click(); });
+      const credit = document.createElement("div");
+      credit.className = "menu-note";
+      credit.textContent = "\u062e\u0631\u0627\u0626\u0637: OpenStreetMap";
+      box.appendChild(credit);
       const close = sheet(T("account", "حسابي"), box);
     };
     bar.appendChild(b);
@@ -169,4 +173,17 @@
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
+
+
+  /** The map view already has a big "ask" button, so the floating assistant button is hidden there. */
+  function syncFab() {
+    const fab = document.querySelector(".ai-fab");
+    if (!fab) return;
+    const onMap = !!document.querySelector('.bottom-nav .nav[data-view="map"].active');
+    fab.style.display = onMap && window.innerWidth <= 480 ? "none" : "";
+  }
+  document.addEventListener("click", (e) => {
+    if (e.target.closest(".bottom-nav .nav")) setTimeout(syncFab, 60);
+  });
+  setInterval(syncFab, 1200);
 })();

@@ -1,11 +1,15 @@
 /* شاحنتي / Chahina — PWA front-end (ar / fr / en) */
-const API = "/api";
+const ORIGIN = (window.API_ORIGIN || "").replace(/\/$/, "");
+const API = ORIGIN + "/api";
+/** Make server-relative media URLs absolute (needed when the app runs from bundled files). */
+const mediaUrl = (u) => (typeof u === "string" && u.startsWith("/") ? ORIGIN + u : u);
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
 const state = {
   token: localStorage.getItem("tk_token"),
-  lang: localStorage.getItem("tk_lang") || (navigator.language || "ar").slice(0, 2),
+  // Algeria-first: Arabic by default, French only if the phone is set to French
+  lang: localStorage.getItem("tk_lang") || ((navigator.language || "ar").slice(0, 2) === "fr" ? "fr" : "ar"),
   user: null,
   truck: null,
   map: null,
@@ -86,7 +90,7 @@ const esc = (v) =>
   String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const avatar = (url, name, cls = "") =>
   url
-    ? `<img class="avatar ${cls}" src="${esc(url)}" alt="${esc(name || "")}">`
+    ? `<img class="avatar ${cls}" src="${esc(mediaUrl(url))}" alt="${esc(name || "")}">`
     : `<div class="avatar ph ${cls}">${esc((name || "?").trim().charAt(0).toUpperCase())}</div>`;
 const timeShort = (ts) => String(ts || "").slice(5, 16);
 
@@ -359,12 +363,28 @@ async function refreshTrucks() {
         }${t.distance_km != null ? `<br>${t.distance_km} ${T("km")}` : ""}`
       )
   );
+  // Keep every nearby truck visible above the sheet instead of showing an empty map
+  if (state.markers.length) {
+    const pts = trucks.map((t) => [t.lat, t.lng]);
+    if (state.me) pts.push([state.me.lat, state.me.lng]);
+    try {
+      const sheetH = Math.round(window.innerHeight * 0.45);
+      state.map.fitBounds(L.latLngBounds(pts).pad(0.15), {
+        paddingTopLeft: [24, 70],
+        paddingBottomRight: [24, sheetH],
+        maxZoom: 13,
+        animate: false,
+      });
+    } catch {}
+  } else if (state.me) {
+    state.map.setView([state.me.lat, state.me.lng], 12);
+  }
   $("#trucks-list").innerHTML = trucks.length
     ? trucks
         .slice(0, 20)
         .map(
           (t) => `<div class="item row-card ${t.cheapest ? "cheap" : ""}">
-        ${t.photo_url ? `<img class="truck-thumb" src="${esc(t.photo_url)}" alt="">` : avatar(null, t.name)}
+        ${t.photo_url ? `<img class="truck-thumb" src="${esc(mediaUrl(t.photo_url))}" alt="">` : avatar(null, t.name)}
         <div class="grow">
           <div class="row"><b>${t.online ? '<span class="online-dot"></span>' : ""}${esc(t.name)}${t.verified ? ' <span class="verified" title="'+T("verified")+'">✔</span>' : ""}</b>${
             t.cheapest ? `<span class="badge cheap">${T("cheapest")} 🏆</span>` : t.distance_km != null ? `<span class="badge">${t.distance_km} ${T("km")}</span>` : ""
@@ -419,7 +439,7 @@ function renderTruckPanel() {
   const t = state.truck;
   $("#toggle-available").checked = !!(t && t.available);
   $("#truck-summary").innerHTML = t
-    ? `${t.photo_url ? `<img class="truck-photo" src="${esc(t.photo_url)}" alt="">` : ""}
+    ? `${t.photo_url ? `<img class="truck-photo" src="${esc(mediaUrl(t.photo_url))}" alt="">` : ""}
        <b>${truckLabel(t.truck_type)}</b> — ${t.capacity_tons} ${T("ton")}<br>
        <span class="meta">${esc(t.plate || "—")} • ${t.lat ? "📍 " + T("loc_updated") : T("share_loc")}</span><br>
        <span class="meta">${T("tariff")}: ${tariffText(t.tariff)}</span>`
@@ -435,7 +455,7 @@ $("#btn-truck-edit").onclick = () => {
     T("truck_data"),
     `<form id="form-truck" class="form-grid">
       <div id="truck-photo-pick" class="photo-pick">
-        ${t.photo_url ? `<img class="truck-thumb" src="${esc(t.photo_url)}" alt="">` : `<div class="truck-thumb avatar ph">🚚</div>`}
+        ${t.photo_url ? `<img class="truck-thumb" src="${esc(mediaUrl(t.photo_url))}" alt="">` : `<div class="truck-thumb avatar ph">🚚</div>`}
         <button type="button" class="btn ghost small">${t.photo_url ? T("change_photo") : T("upload_photo")}</button>
         <input type="file" accept="image/*">
       </div>
@@ -651,7 +671,7 @@ async function openShipment(id) {
     html += `<h4>${T("track_carrier")}</h4><div id="track-map" class="map-pick"></div><p class="hint" id="track-hint"></p>`;
   }
   if (s.pod_photo_url) {
-    html += `<h4>${T("pod_title")}</h4><img class="truck-photo" src="${esc(s.pod_photo_url)}" alt="">`;
+    html += `<h4>${T("pod_title")}</h4><img class="truck-photo" src="${esc(mediaUrl(s.pod_photo_url))}" alt="">`;
   }
   if (s.status === "delivered" && (shipper || s.carrier_id === state.user.id)) {
     html += `<h4>${T("rate_other")}</h4><div class="row" id="rate-row">${[1, 2, 3, 4, 5]
@@ -938,7 +958,7 @@ async function loadProfile() {
     ${
       me.truck
         ? `<div class="item">
-             ${me.truck.photo_url ? `<img class="truck-photo" src="${esc(me.truck.photo_url)}" alt="">` : ""}
+             ${me.truck.photo_url ? `<img class="truck-photo" src="${esc(mediaUrl(me.truck.photo_url))}" alt="">` : ""}
              <b>${T("my_truck_state")}</b>
              <div class="meta">${truckLabel(me.truck.truck_type)} • ${me.truck.capacity_tons} ${T("ton")} • ${me.truck.available ? T("available") : "—"}</div>
              <div class="meta">${T("tariff")}: ${tariffText(me.truck.tariff)}</div>
@@ -963,7 +983,7 @@ function openProfileEditor(u) {
     T("edit_profile"),
     `<form id="form-profile" class="form-grid">
       <div id="me-photo-pick" class="photo-pick">
-        ${u.photo_url ? `<img class="avatar lg" src="${esc(u.photo_url)}" alt="">` : `<div class="avatar lg ph">${esc((u.name || "?").charAt(0))}</div>`}
+        ${u.photo_url ? `<img class="avatar lg" src="${esc(mediaUrl(u.photo_url))}" alt="">` : `<div class="avatar lg ph">${esc((u.name || "?").charAt(0))}</div>`}
         <button type="button" class="btn ghost small">${u.photo_url ? T("change_photo") : T("upload_photo")}</button>
         <input type="file" accept="image/*">
       </div>
@@ -1011,7 +1031,7 @@ async function openProfile(userId) {
       ${
         user.truck
           ? `<div class="item">
-               ${user.truck.photo_url ? `<img class="truck-photo" src="${esc(user.truck.photo_url)}" alt="">` : ""}
+               ${user.truck.photo_url ? `<img class="truck-photo" src="${esc(mediaUrl(user.truck.photo_url))}" alt="">` : ""}
                <div class="row"><b>${truckLabel(user.truck.truck_type)}</b><span class="badge">${user.truck.capacity_tons} ${T("ton")}</span></div>
                ${user.truck.description ? `<div class="meta">${esc(user.truck.description)}</div>` : ""}
                <div class="row"><span class="meta">${T("tariff")}</span><span class="price-tag">${tariffText(user.truck.tariff)}</span></div>
@@ -1107,7 +1127,7 @@ async function openChat(userId, shipmentId = null) {
 
 /* ---------- start ---------- */
 boot();
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
 
 
 /* ---------- v2 hooks ---------- */

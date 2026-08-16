@@ -174,6 +174,10 @@
     if (navigator.vibrate) navigator.vibrate(8);
   }
 
+  function close() {
+    if (panel && !panel.classList.contains("hidden")) toggle();
+  }
+
   function fab() {
     if ($(".ai-fab")) return;
     const b = document.createElement("button");
@@ -191,10 +195,17 @@
     const app = document.getElementById("screen-app");
     if (app) new MutationObserver(() => paintBrand()).observe(app, { attributes: true, attributeFilter: ["class"] });
     document.addEventListener("ch:lang", () => { if (panel) renderChips(); });
+    // Escape or a tap outside closes the assistant
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+    document.addEventListener("pointerdown", (e) => {
+      if (!document.body.classList.contains("ai-open")) return;
+      if (e.target.closest(".ai-panel") || e.target.closest(".ai-fab") || e.target.closest(".hero-ask")) return;
+      close();
+    });
   }
 
   function safeBoot(){ try { boot(); } catch (e) { document.title = "AIERR: " + (e && e.message); } }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", safeBoot);
   else safeBoot();
-  window.CHAI = { toggle, ask: send };
+  window.CHAI = { toggle, close, ask: send };
 })();
