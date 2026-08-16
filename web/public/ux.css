@@ -1,0 +1,120 @@
+/* ==========================================================================
+   شاحنتي / Chahina — UX polish layer (v2.1)
+   Loaded after styles.css. Motion, feedback, and micro-interactions only.
+   ========================================================================== */
+
+/* --- fixes: variables that were referenced but never defined in dark mode --- */
+:root{ --line:#22344e; --card:var(--surface); }
+[data-theme="light"]{ --card:var(--surface); }
+
+:root{
+  --spring:cubic-bezier(.2,.9,.25,1.15);
+  --swift:cubic-bezier(.32,.72,0,1);
+}
+
+/* ============================ tap feedback ============================ */
+.btn,.nav,.tab,.item,.lang-switch button,.chip{
+  -webkit-user-select:none;user-select:none;touch-action:manipulation;
+}
+.btn{position:relative;overflow:hidden;transition:transform .16s var(--spring),filter .16s var(--ease),box-shadow .2s var(--ease)}
+.btn:active{transform:scale(.96)}
+.btn.primary:active{box-shadow:0 4px 14px rgba(255,192,46,.3)}
+.item{position:relative;overflow:hidden}
+.item.row-card:active{transform:scale(.985)}
+.tab:active,.lang-switch button:active{transform:scale(.97)}
+
+/* ripple */
+.ripple{
+  position:absolute;border-radius:50%;pointer-events:none;transform:scale(0);
+  background:currentColor;opacity:.20;animation:ripple .55s var(--swift) forwards;
+}
+@keyframes ripple{to{transform:scale(2.6);opacity:0}}
+
+/* focus ring for keyboard users only */
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:8px}
+
+/* ============================ view transitions ============================ */
+.view.active{animation:none}
+.view.vt-in-next{animation:vtNext .32s var(--swift) both}
+.view.vt-in-prev{animation:vtPrev .32s var(--swift) both}
+@keyframes vtNext{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:none}}
+@keyframes vtPrev{from{opacity:0;transform:translateX(-18px)}to{opacity:1;transform:none}}
+html[dir="rtl"] .view.vt-in-next{animation-name:vtPrev}
+html[dir="rtl"] .view.vt-in-prev{animation-name:vtNext}
+
+/* ============================ bottom nav ============================ */
+.bottom-nav{position:relative}
+.nav.active::before{display:none}
+.nav-ind{
+  position:absolute;left:0;top:0;height:4px;border-radius:0 0 6px 6px;background:var(--grad-brand);z-index:2;
+  transition:transform .34s var(--spring),width .34s var(--spring);pointer-events:none;
+  box-shadow:0 2px 10px rgba(255,192,46,.5);
+}
+.nav span{transition:transform .3s var(--spring)}
+.nav:active span{transform:scale(.9)}
+.nav.active span{animation:navPop .38s var(--spring)}
+.nav::after{content:"";position:absolute;top:6px;left:50%;margin-left:-21px;width:42px;height:42px;border-radius:50%;
+  background:radial-gradient(circle,color-mix(in srgb,var(--brand) 26%,transparent),transparent 70%);
+  opacity:0;transform:scale(.6);transition:.3s var(--spring);pointer-events:none}
+.nav.active::after{opacity:1;transform:scale(1)}
+@keyframes navPop{0%{transform:translateY(0) scale(1)}55%{transform:translateY(-5px) scale(1.24)}100%{transform:translateY(-2px) scale(1.12)}}
+.nav-count,.bell-count{animation:pop .3s var(--spring)}
+
+/* ============================ modal / sheets ============================ */
+.modal{transition:opacity .22s var(--ease);will-change:opacity}
+.modal.closing{opacity:0}
+.modal.closing .modal-card{transform:translateY(100%);transition:transform .24s var(--swift)}
+.modal-card{animation:sheetIn .38s var(--spring);will-change:transform}
+@keyframes sheetIn{from{transform:translateY(26px);opacity:.4}to{transform:none;opacity:1}}
+.modal-card.dragging{transition:none}
+.modal-card::before{cursor:grab}
+#modal-body{animation:fade .3s var(--ease) .05s both}
+@media(min-width:820px){
+  .modal-card{animation:sheetInDesk .34s var(--spring)}
+  .modal.closing .modal-card{transform:scale(.96);opacity:0}
+  @keyframes sheetInDesk{from{transform:scale(.94);opacity:0}to{transform:none;opacity:1}}
+}
+
+/* ============================ toast ============================ */
+.toast{transition:opacity .25s var(--ease),transform .25s var(--swift)}
+.toast.out{opacity:0;transform:translateY(12px)}
+
+/* ============================ list reveal ============================ */
+.list > .item.rv{animation:rvIn .42s var(--swift) both;animation-delay:calc(var(--i,0) * 45ms)}
+@keyframes rvIn{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}
+
+/* ============================ inputs ============================ */
+input,select,textarea{transition:border-color .18s var(--ease),box-shadow .18s var(--ease),background .18s var(--ease)}
+input:focus,select:focus,textarea:focus{
+  outline:none;border-color:var(--brand);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 22%,transparent);
+}
+.switch input{transition:background .25s var(--ease)}
+.switch input::after{transition:inset-inline-end .28s var(--spring)}
+
+/* ============================ pull / scroll ============================ */
+.view,.map-panel,.modal-card,.chat-msgs{scroll-behavior:smooth;overscroll-behavior:contain}
+.map-panel{transition:max-height .3s var(--swift)}
+
+/* ============================ skeletons ============================ */
+.skel + .skel{margin-top:10px}
+.skel.sm{height:62px}
+
+/* ============================ misc polish ============================ */
+.topbar,.bottom-nav{transition:background .3s var(--ease)}
+.badge,.chip,.price-tag{transition:.2s var(--ease)}
+.avatar,.truck-thumb,.truck-photo{transition:transform .3s var(--spring)}
+.item:active .truck-thumb{transform:scale(.96)}
+.onboard-card{background:var(--surface);border:1px solid var(--line)}
+.btn.primary.block{letter-spacing:-.01em}
+.fab-up{
+  position:absolute;bottom:14px;inset-inline-end:14px;z-index:650;width:42px;height:42px;border-radius:50%;
+  border:1px solid var(--line);background:var(--surface);color:var(--text);font-size:17px;cursor:pointer;
+  box-shadow:var(--shadow-2);opacity:0;transform:translateY(10px);pointer-events:none;transition:.25s var(--swift);
+}
+.fab-up.show{opacity:1;transform:none;pointer-events:auto}
+
+@media (prefers-reduced-motion:reduce){
+  .ripple{display:none}
+  .view.vt-in-next,.view.vt-in-prev,.list > .item.rv{animation:none !important}
+}

@@ -1006,7 +1006,7 @@ app.get("/api/meta", (_req, res) => {
     shipments: db.prepare("SELECT COUNT(*) n FROM shipments").get().n,
     delivered: db.prepare("SELECT COUNT(*) n FROM shipments WHERE status='delivered'").get().n,
   };
-  ok(res, { version: "2.0", truck_types: TRUCK_TYPES, stats, payments_enabled: chargily.enabled(), payment_mode: chargily.MODE });
+  ok(res, { version: "2.1", truck_types: TRUCK_TYPES, stats, payments_enabled: chargily.enabled(), payment_mode: chargily.MODE });
 });
 
 app.get("/api/health", (_req, res) => ok(res, { status: "ok", time: new Date().toISOString() }));

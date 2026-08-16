@@ -1,4 +1,4 @@
-const CACHE = "chahina-v2";
+const CACHE = "chahina-v21";
 const ASSETS = ["/", "/styles.css", "/app.js", "/v2.js", "/i18n.js", "/manifest.webmanifest",
   "/vendor/leaflet/leaflet.css", "/vendor/leaflet/leaflet.js"];
 self.addEventListener("install", (e) => e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS))));
