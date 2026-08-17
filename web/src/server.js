@@ -10,7 +10,6 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const db = require("./db");
 const chargily = require("./chargily");
-const ai = require("./ai");
 const { t, pickLang, LANGS, TRUCK_TYPES } = require("./i18n");
 const fs = require("fs");
 const crypto = require("crypto");
@@ -695,22 +694,6 @@ app.get("/api/quote", (req, res) => {
   const w = num(req.query.weight_tons) || 0;
   if (km === null) return bad(res, req, "field_required", 400, "km");
   ok(res, quoteFor(km, w, req.query.truck_type));
-});
-
-/** ---------- smart assistant (AI) ---------- */
-app.post("/api/ai/ask", auth(), async (req, res) => {
-  try {
-    const out = await ai.ask({ text: req.body?.text, user: req.user, quote: quoteFor });
-    ok(res, out);
-  } catch (e) {
-    res.status(500).json({ error: String(e.message || e) });
-  }
-});
-
-app.get("/api/ai/geocode", auth(), async (req, res) => {
-  const hit = await ai.geocode(req.query.q);
-  if (!hit) return res.status(404).json({ error: "not_found" });
-  ok(res, hit);
 });
 
 // ---------- saved places ----------

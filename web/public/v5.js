@@ -1,5 +1,4 @@
 /* v5.js — readiness layer (v5.0)
-   - voice input for the assistant (Arabic first)
    - offline / back-online banner
    - first-run coach marks
    - lazy images + small performance touches */
@@ -9,50 +8,6 @@
   const $$ = (s, r = document) => Array.from((r || document).querySelectorAll(s));
   const L = () => document.documentElement.lang || "ar";
   const T = (o) => o[L()] || o.ar;
-
-  /* ---------------- 1. voice input ---------------- */
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  let rec = null;
-
-  function voiceLang() {
-    return L() === "fr" ? "fr-FR" : L() === "en" ? "en-US" : "ar-DZ";
-  }
-
-  function addMic() {
-    const form = $(".ai-form") || $(".ai-panel form");
-    if (!form || $("#ai-mic") || !SR) return;
-    const b = document.createElement("button");
-    b.id = "ai-mic";
-    b.type = "button";
-    b.className = "ai-mic";
-    b.innerHTML = "🎤";
-    b.title = T({ ar: "تكلم", fr: "Parler", en: "Speak" });
-    b.onclick = () => listen(b);
-    form.appendChild(b);
-  }
-
-  function listen(btn) {
-    if (!SR) return;
-    if (rec) { try { rec.stop(); } catch (e) {} rec = null; btn.classList.remove("rec"); return; }
-    rec = new SR();
-    rec.lang = voiceLang();
-    rec.interimResults = true;
-    rec.continuous = false;
-    btn.classList.add("rec");
-    if (navigator.vibrate) navigator.vibrate(10);
-    const input = $(".ai-panel input");
-    rec.onresult = (e) => {
-      const txt = Array.from(e.results).map((r) => r[0].transcript).join(" ");
-      if (input) input.value = txt;
-      if (e.results[e.results.length - 1].isFinal && window.CHAI && txt.trim()) {
-        CHAI.ask(txt.trim());
-        if (input) input.value = "";
-      }
-    };
-    rec.onerror = () => { btn.classList.remove("rec"); rec = null; };
-    rec.onend = () => { btn.classList.remove("rec"); rec = null; };
-    try { rec.start(); } catch (e) { btn.classList.remove("rec"); rec = null; }
-  }
 
   /* ---------------- 2. offline banner ---------------- */
   function netBanner(on) {
@@ -73,7 +28,6 @@
 
   /* ---------------- 3. first-run coach marks ---------------- */
   const COACH = [
-    { sel: ".hero-ask, [data-hero-ask]", t: { ar: "اطلب شاحنة بالكلام — اكتب أو تكلم وسنحسب لك السعر.", fr: "Demandez un camion en langage naturel.", en: "Ask for a truck in plain words." } },
     { sel: "#trucks-list .item, .row-card", t: { ar: "هنا الشاحنات القريبة مرتبة من الأرخص — قارن واختر.", fr: "Camions proches, du moins cher au plus cher.", en: "Nearby trucks, cheapest first." } },
     { sel: '.bottom-nav .nav[data-view="chats"]', t: { ar: "دردش مع صاحب الشاحنة قبل الاتفاق.", fr: "Discutez avant de conclure.", en: "Chat before you commit." } },
   ];
@@ -112,12 +66,9 @@
 
   /* ---------------- boot ---------------- */
   function boot() {
-    setInterval(addMic, 1500);
-    addMic();
     if (!navigator.onLine) netBanner(false);
     setTimeout(coach, 6000);
     setInterval(lazyImages, 4000);
-    document.addEventListener("ch:lang", () => { const m = $("#ai-mic"); if (m) m.title = T({ ar: "تكلم", fr: "Parler", en: "Speak" }); });
   }
   function safeBoot() { try { boot(); } catch (e) { document.title = "V5ERR: " + (e && e.message); } }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", safeBoot);

@@ -1,4 +1,4 @@
-/* ai.js — brand mark, animated splash, vector nav icons and the in-app smart assistant (v2.2). */
+/* ai.js — brand mark, animated splash, vector nav icons (v2.2). */
 (() => {
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -59,153 +59,14 @@
     }, 2100);
   }
 
-  // ---------- assistant ----------
-  const CHIPS = {
-    ar: ["من غرداية إلى الجزائر 3 طن", "كم سعر 120 كم؟", "كيف أطلب شاحنة؟", "بكم أسعّر الكيلومتر؟"],
-    fr: ["de Ghardaïa à Alger 3 tonnes", "prix pour 120 km ?", "Comment réserver ?", "Quel tarif au km ?"],
-    en: ["from Ghardaia to Algiers 3 tons", "price for 120 km?", "How do I book?", "What rate per km?"],
-  };
-
-  let panel;
-  function build() {
-    panel = document.createElement("div");
-    panel.className = "ai-panel hidden";
-    panel.innerHTML = `
-      <div class="ai-head">
-        <span class="ai-dot"></span><b>${T({ ar: "المساعد الذكي", fr: "Assistant intelligent", en: "Smart assistant" })}</b>
-        <button class="btn ghost small ai-x">✕</button>
-      </div>
-      <div class="ai-body"></div>
-      <div class="ai-chips"></div>
-      <form class="ai-form">
-        <input required maxlength="300" placeholder="${T({ ar: "اكتب طلبك… مثال: من باتنة إلى ورقلة 5 طن", fr: "Écrivez votre demande…", en: "Type your request…" })}">
-        <button class="btn primary small">↑</button>
-      </form>`;
-    document.body.appendChild(panel);
-    panel.querySelector(".ai-x").onclick = toggle;
-    panel.querySelector(".ai-form").onsubmit = (e) => {
-      e.preventDefault();
-      const i = panel.querySelector("input");
-      const v = i.value.trim();
-      if (!v) return;
-      i.value = "";
-      send(v);
-    };
-    renderChips();
-    bubble(
-      "ai",
-      T({
-        ar: "مرحباً 👋 أنا مساعدك. اكتب مسار الشحنة وسأحسب لك المسافة وأرخص سعر متاح فوراً.",
-        fr: "Bonjour 👋 Écrivez votre trajet, je calcule la distance et le meilleur prix.",
-        en: "Hi 👋 Type your route and I’ll compute distance and the cheapest price.",
-      })
-    );
-  }
-
-  function renderChips() {
-    const box = panel.querySelector(".ai-chips");
-    box.innerHTML = "";
-    (CHIPS[lang()] || CHIPS.ar).forEach((c) => {
-      const b = document.createElement("button");
-      b.className = "ai-chip";
-      b.textContent = c;
-      b.onclick = () => send(c);
-      box.appendChild(b);
-    });
-  }
-
-  function md(s) {
-    return String(s)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
-      .replace(/\n/g, "<br>");
-  }
-
-  function bubble(who, text) {
-    const b = document.createElement("div");
-    b.className = "ai-msg " + who;
-    b.innerHTML = md(text);
-    panel.querySelector(".ai-body").appendChild(b);
-    panel.querySelector(".ai-body").scrollTop = 1e6;
-    return b;
-  }
-
-  async function send(text) {
-    bubble("me", text);
-    const wait = bubble("ai typing", "<i></i><i></i><i></i>");
-    wait.innerHTML = '<span class="dots"><i></i><i></i><i></i></span>';
-    try {
-      const r = await api("/ai/ask", { method: "POST", body: { text } });
-      wait.remove();
-      const b = bubble("ai", r.reply || "…");
-      if (r.carriers && r.carriers.length) {
-        const box = document.createElement("div");
-        box.className = "ai-cards";
-        r.carriers.forEach((c, idx) => {
-          const el = document.createElement("button");
-          el.className = "ai-card";
-          el.innerHTML = `<b>${idx === 0 ? "🏆 " : ""}${c.name}</b><span>${new Intl.NumberFormat("fr-FR").format(c.price)} ${T({ ar: "دج", fr: "DA", en: "DZD" })}</span>
-            <small>${c.ratings_count ? "★ " + c.rating + " (" + c.ratings_count + ")" : T({ ar: "جديد", fr: "nouveau", en: "new" })}${c.verified ? " • ✔" : ""}</small>`;
-          el.onclick = () => {
-            toggle();
-            if (window.CHV2 && window.CHV2.openBooking) window.CHV2.openBooking(c.carrier_id);
-            else if (window.CH && window.CH.openProfile) window.CH.openProfile(c.carrier_id);
-          };
-          box.appendChild(el);
-        });
-        b.appendChild(box);
-      }
-      if (r.suggest_per_km && window.CH && window.CH.toast) {
-        // carrier advice: nothing else to do, the text carries the number
-      }
-    } catch (e) {
-      wait.remove();
-      bubble("ai", T({ ar: "تعذّر الاتصال، حاول مجدداً.", fr: "Connexion impossible.", en: "Connection failed." }));
-    }
-  }
-
-  function toggle() {
-    if (!panel) build();
-    const open = panel.classList.contains("hidden");
-    panel.classList.toggle("hidden", !open);
-    document.body.classList.toggle("ai-open", open);
-    if (open) setTimeout(() => panel.querySelector("input").focus(), 250);
-    if (navigator.vibrate) navigator.vibrate(8);
-  }
-
-  function close() {
-    if (panel && !panel.classList.contains("hidden")) toggle();
-  }
-
-  function fab() {
-    if ($(".ai-fab")) return;
-    const b = document.createElement("button");
-    b.className = "ai-fab";
-    b.title = T({ ar: "المساعد الذكي", fr: "Assistant", en: "Assistant" });
-    b.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 2l1.9 5.1L19 9l-5.1 1.9L12 16l-1.9-5.1L5 9l5.1-1.9L12 2zM19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15z"/></svg>';
-    b.onclick = toggle;
-    document.body.appendChild(b);
-  }
-
   function boot() {
     try { paintBrand(); } catch (e) {}
     try { splash(); } catch (e) {}
-    fab();
     const app = document.getElementById("screen-app");
     if (app) new MutationObserver(() => paintBrand()).observe(app, { attributes: true, attributeFilter: ["class"] });
-    document.addEventListener("ch:lang", () => { if (panel) renderChips(); });
-    // Escape or a tap outside closes the assistant
-    document.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
-    document.addEventListener("pointerdown", (e) => {
-      if (!document.body.classList.contains("ai-open")) return;
-      if (e.target.closest(".ai-panel") || e.target.closest(".ai-fab") || e.target.closest(".hero-ask")) return;
-      close();
-    });
   }
 
   function safeBoot(){ try { boot(); } catch (e) { document.title = "AIERR: " + (e && e.message); } }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", safeBoot);
   else safeBoot();
-  window.CHAI = { toggle, close, ask: send };
 })();

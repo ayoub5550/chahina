@@ -119,7 +119,7 @@ input:focus,select:focus,textarea:focus{
   .view.vt-in-next,.view.vt-in-prev,.list > .item.rv{animation:none !important}
 }
 
-/* ===== v2.2 — brand mark, splash, vector icons, smart assistant ===== */
+/* ===== v2.2 — brand mark, splash, vector icons ===== */
 .brand .logo{display:grid;place-items:center;background:none!important;box-shadow:none!important;padding:0}
 .brand .logo .mark{width:104px;height:104px;filter:drop-shadow(0 12px 26px rgba(255,159,28,.32));animation:markIn .7s var(--spring) both}
 .logo-sm{background:none!important;display:grid;place-items:center;overflow:visible}
@@ -144,50 +144,6 @@ input:focus,select:focus,textarea:focus{
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes slideBar{0%{transform:translateX(-110%)}100%{transform:translateX(360%)}}
 
-/* assistant FAB */
-.ai-fab{position:fixed;inset-inline-end:16px;bottom:calc(74px + env(safe-area-inset-bottom));z-index:1200;
-  width:54px;height:54px;border:0;border-radius:50%;background:var(--grad-brand);color:var(--brand-ink);
-  box-shadow:0 12px 28px rgba(255,159,28,.38);display:grid;place-items:center;cursor:pointer;
-  animation:markIn .5s var(--spring) both}
-.ai-fab svg{width:26px;height:26px;fill:currentColor}
-.ai-fab::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:2px solid var(--brand);opacity:.45;animation:pulseRing 2.4s ease-out infinite}
-@keyframes pulseRing{0%{transform:scale(.9);opacity:.5}70%{transform:scale(1.25);opacity:0}100%{opacity:0}}
-body.ai-open .ai-fab{transform:scale(.85);opacity:.5}
-
-/* assistant panel */
-.ai-panel{position:fixed;z-index:1300;inset-inline:10px;bottom:calc(66px + env(safe-area-inset-bottom));max-width:520px;margin-inline:auto;
-  background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:0 24px 60px rgba(0,0,0,.45);
-  display:flex;flex-direction:column;overflow:hidden;max-height:min(74vh,620px);
-  animation:aiIn .34s var(--spring) both}
-.ai-panel.hidden{display:none}
-@keyframes aiIn{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:none}}
-.ai-head{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line)}
-.ai-head b{flex:1}
-.ai-dot{width:9px;height:9px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 0 rgba(34,197,94,.5);animation:pulseDot 2s infinite}
-@keyframes pulseDot{70%{box-shadow:0 0 0 8px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
-.ai-body{padding:12px 14px;overflow:auto;display:flex;flex-direction:column;gap:8px;flex:1;min-height:120px}
-.ai-msg{max-width:88%;padding:10px 12px;border-radius:14px;line-height:1.6;font-size:14px;animation:fadeUp .3s var(--spring) both}
-.ai-msg.ai{background:rgba(255,255,255,.06);border:1px solid var(--line);align-self:flex-start;border-start-start-radius:4px}
-.ai-msg.me{background:var(--grad-brand);color:var(--brand-ink);align-self:flex-end;border-end-end-radius:4px;font-weight:600}
-.dots{display:inline-flex;gap:4px}
-.dots i{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.5;animation:dotJump 1s infinite}
-.dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}
-@keyframes dotJump{0%,100%{transform:translateY(0);opacity:.35}50%{transform:translateY(-4px);opacity:.9}}
-.ai-cards{display:grid;gap:6px;margin-top:8px}
-.ai-card{display:grid;grid-template-columns:1fr auto;gap:2px 10px;text-align:start;padding:8px 10px;border-radius:12px;
-  border:1px solid var(--line);background:rgba(255,255,255,.03);cursor:pointer;color:inherit;transition:.2s var(--spring)}
-.ai-card:hover{border-color:var(--brand);transform:translateY(-1px)}
-.ai-card span{font-weight:800;color:var(--brand)}
-.ai-card small{grid-column:1/-1;opacity:.6;font-size:12px}
-.ai-chips{display:flex;gap:6px;overflow:auto;padding:0 12px 8px;scrollbar-width:none}
-.ai-chips::-webkit-scrollbar{display:none}
-.ai-chip{white-space:nowrap;padding:6px 12px;border-radius:99px;border:1px solid var(--line);background:transparent;color:inherit;font-size:12.5px;cursor:pointer}
-.ai-chip:hover{border-color:var(--brand);color:var(--brand)}
-.ai-form{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
-.ai-form input{flex:1}
-
-body:not(:has(#screen-app.active)) .ai-fab,
-body:not(:has(#screen-app.active)) .ai-panel{display:none!important}
 .logo-sm{width:38px;height:38px;border-radius:12px;overflow:visible}
 .logo-sm .mark{width:38px;height:38px}
 
@@ -197,7 +153,6 @@ body.splashing .onboard,body.splashing .modal{display:none!important}
 .simple-bar{display:flex;gap:8px;align-items:center;margin-bottom:10px}
 .simple-bar input{flex:1;min-height:46px;font-size:15px}
 .btn.sq{min-width:46px;min-height:46px;display:grid;place-items:center;font-size:18px;padding:0}
-.hero-ask{min-height:50px;font-size:16px;font-weight:800;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:8px}
 .nav-hidden{display:none !important}
 #menu-hold{display:none}
 .menu-list{display:flex;flex-direction:column;gap:10px}
@@ -240,21 +195,7 @@ body.splashing .onboard,body.splashing .modal{display:none!important}
   .row-card{gap:8px}
   .row-card .actions{gap:6px}
   .truck-thumb{width:52px;height:52px}
-  .hero-ask{font-size:15px}
 }
-
-/* assistant: full-height focused sheet on phones */
-@media (max-width:480px){
-  .ai-panel{inset-inline:0;bottom:0;height:86vh;max-height:86vh;border-radius:22px 22px 0 0;
-    padding-bottom:env(safe-area-inset-bottom)}
-  body.ai-open .bottom-nav{transform:translateY(110%);transition:transform .3s var(--spring)}
-  body.ai-open::before{content:"";position:fixed;inset:0;background:rgba(3,8,20,.55);
-    backdrop-filter:blur(2px);z-index:1290;animation:fadeIn .25s both}
-  .ai-msg{max-width:92%;font-size:15px}
-  .ai-form input{min-height:48px}
-}
-@keyframes fadeIn{from{opacity:0}to{opacity:1}}
-.ai-card b,.ai-card span,.ai-card small{white-space:nowrap;letter-spacing:normal;word-spacing:normal}
 .top-actions{display:flex;align-items:center;gap:10px}
 .top-actions .btn{position:relative;flex:0 0 auto}
 
@@ -306,8 +247,6 @@ body.is-carrier .map-panel{max-height:78%}
 .gal-item img{width:100%;height:78px;object-fit:cover;border-radius:12px;display:block}
 .gal-del{position:absolute;inset-block-start:4px;inset-inline-end:4px;background:rgba(0,0,0,.6);color:#fff;border:0;border-radius:99px;width:24px;height:24px;line-height:1}
 .chat-img{min-width:120px;min-height:90px;object-fit:cover;background:rgba(255,255,255,.06)}
-body.modal-open .ai-fab{display:none!important}
-
 /* ---- v4: timeline, rating, sort chips, stats ---- */
 .tl{display:flex;align-items:flex-start;gap:2px;margin-top:12px}
 .tl-step{flex:1;text-align:center;position:relative;opacity:.45}
@@ -340,10 +279,7 @@ body.modal-open .ai-fab{display:none!important}
 .bar i{display:block;width:100%;min-height:3px;background:linear-gradient(180deg,var(--brand,#f5a524),rgba(245,165,36,.35));border-radius:8px 8px 0 0}
 .bar span{font-size:10px;opacity:.6;margin-top:4px}
 
-/* ---- v5: voice, offline, coach ---- */
-.ai-mic{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:inherit;border-radius:14px;padding:10px 12px;font-size:17px}
-.ai-mic.rec{background:#e5484d;border-color:transparent;animation:micpulse 1s infinite}
-@keyframes micpulse{50%{box-shadow:0 0 0 8px rgba(229,72,77,.25)}}
+/* ---- v5: offline, coach ---- */
 .net-bar{position:fixed;inset-inline:0;bottom:calc(74px + env(safe-area-inset-bottom));z-index:1900;margin:0 14px;padding:10px 14px;border-radius:14px;
   font-size:13px;text-align:center;transform:translateY(160%);transition:transform .3s cubic-bezier(.2,.8,.2,1)}
 .net-bar.in{transform:translateY(0)}

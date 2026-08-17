@@ -98,13 +98,6 @@
     bar.appendChild(fbtn);
     host.insertBefore(bar, host.firstChild);
 
-    // ask-by-voice/text hero action
-    const ask = document.createElement("button");
-    ask.className = "btn primary block hero-ask";
-    ask.innerHTML = "✨ <span>" + T("ask_hero", "اطلب شاحنة بالكلام") + "</span>";
-    ask.onclick = () => window.CHAI && window.CHAI.toggle(true);
-    host.insertBefore(ask, bar.nextSibling);
-
     // stash every filter control in a hidden holder, shown only in the sheet
     const stash = document.createElement("div");
     stash.id = "filters-stash";
@@ -176,17 +169,4 @@
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
-
-
-  /** The map view already has a big "ask" button, so the floating assistant button is hidden there. */
-  function syncFab() {
-    const fab = document.querySelector(".ai-fab");
-    if (!fab) return;
-    const onMap = !!document.querySelector('.bottom-nav .nav[data-view="map"].active');
-    fab.style.display = onMap && window.innerWidth <= 480 ? "none" : "";
-  }
-  document.addEventListener("click", (e) => {
-    if (e.target.closest(".bottom-nav .nav")) setTimeout(syncFab, 60);
-  });
-  setInterval(syncFab, 1200);
 })();
