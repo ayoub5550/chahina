@@ -274,7 +274,11 @@
       el.oninput = run;
       el.onchange = run;
     });
-    $("#btn-filters-toggle").onclick = () => host.classList.toggle("hidden");
+    // the mobile simplified panel (simple.js) may have already removed/replaced
+    // this button with #btn-open-filters — guard so we never crash here and
+    // block the rest of the boot sequence (places/verify buttons, carrier polling).
+    const toggle = $("#btn-filters-toggle");
+    if (toggle) toggle.onclick = () => host.classList.toggle("hidden");
   }
 
   /* ---------------- boot ---------------- */
@@ -289,11 +293,15 @@
   const started = setInterval(() => {
     if (!H.state.user) return;
     clearInterval(started);
-    wireFilters();
-    if (H.state.user.role === "carrier") {
-      loadRequests();
-      setInterval(loadRequests, 30000);
-    }
+    // each step wrapped so one failure (e.g. a DOM node missing) never
+    // silently skips the rest of the critical wiring below it.
+    try { wireFilters(); } catch (e) { console.error("wireFilters failed", e); }
+    try {
+      if (H.state.user.role === "carrier") {
+        loadRequests();
+        setInterval(loadRequests, 30000);
+      }
+    } catch (e) { console.error("loadRequests failed", e); }
     const pl = $("#btn-places");
     if (pl) pl.onclick = openPlaces;
     const vf = $("#btn-verify");
